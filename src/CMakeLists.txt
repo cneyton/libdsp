@@ -1,12 +1,5 @@
-add_library(algo STATIC "")
-
-target_sources(algo
+target_sources(dsp
     PRIVATE
-    )
-
-target_link_libraries(algo pthread common)
-
-target_include_directories(algo
-    PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/filter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source_filter.cpp
     )
