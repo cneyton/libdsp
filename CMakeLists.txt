@@ -19,6 +19,7 @@ add_subdirectory(src)
 target_include_directories(dsp
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     )
 
 target_link_libraries(dsp
