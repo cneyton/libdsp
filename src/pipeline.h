@@ -11,7 +11,7 @@ class Pipeline
 {
 public:
     int run();
-    int add_filter(Filter filter);
+    int add_filter(Filter * filter);
 protected:
     common::Logger logger_;
 private:

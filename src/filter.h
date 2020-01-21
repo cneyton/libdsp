@@ -5,6 +5,8 @@
 
 #include "common/log.h"
 
+#include "pipeline.h"
+
 class Filter
 {
 public:
@@ -14,7 +16,11 @@ public:
     virtual int activate() = 0;
 protected:
     common::Logger logger_;
+
     std::string name_;
+
+    Pipeline * pipeline_;
+
     uint32_t nb_inputs;
     uint16_t nb_outputs;
     uint16_t samplecount;
