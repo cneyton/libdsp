@@ -23,7 +23,13 @@ target_include_directories(dsp
     )
 
 target_link_libraries(dsp
-    PUBLIC common)
+    PUBLIC common armadillo)
 
-#target_compile_options(control
-    #PRIVATE -Werror -Wall -Wextra)
+target_compile_options(dsp PUBLIC -Werror -Wall -Wextra)
+
+# Tests
+include(CTest)
+if(DSP_RUNTESTS)
+    enable_testing()
+    add_subdirectory(test)
+endif()
