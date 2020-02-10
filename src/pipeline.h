@@ -2,22 +2,24 @@
 #define PIPELINE_H
 
 #include <vector>
-#include <memory>
 #include "common/log.h"
 
-class Filter;
+#include "filter.h"
+#include "link.h"
 
 class Pipeline: public common::Log
 {
 public:
-    Pipeline();
+    Pipeline(common::Logger logger);
     virtual ~Pipeline();
 
     int run();
     int add_filter(Filter * filter);
+    int link(Filter * src, Filter * dst);
 
 private:
-    std::vector<std::unique_ptr<Filter>> filters_;
+    std::vector<Filter*> filters_;
+    std::vector<Link>    links_;
 };
 
 #endif

@@ -5,4 +5,5 @@ target_sources(dsp
     ${CMAKE_CURRENT_SOURCE_DIR}/sink_filter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/link.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/chunk.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/pipeline.cpp
     )

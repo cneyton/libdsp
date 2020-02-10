@@ -6,9 +6,8 @@
 
 #include "common/log.h"
 
-#include "pipeline.h"
-
 class Link;
+class Pipeline;
 
 class Filter: virtual public common::Log
 {
@@ -21,6 +20,11 @@ public:
 
     virtual int activate() = 0;
 
+    bool is_ready() const {return ready_;};
+    void set_ready()      {ready_ = true;};
+
+    std::string get_name() const {return name_;};
+
 protected:
     std::string name_;
 
@@ -28,7 +32,7 @@ protected:
     std::vector<Link*> inputs_;
     std::vector<Link*> outputs_;
 
-    uint16_t samplecount;
+    bool ready_ = false;
 };
 
 #endif /* FILTER_H */

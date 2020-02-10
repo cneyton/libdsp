@@ -29,6 +29,7 @@ int Link::link(Filter * src, Filter * dst)
 int Link::push(Chunk&& chunk)
 {
     chunk_queue_.push(std::move(chunk));
+    dst_->set_ready();
     return 0;
 }
 

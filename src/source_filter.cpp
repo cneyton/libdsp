@@ -9,6 +9,7 @@ namespace filter
 Source::Source(common::Logger logger, common::data::Handler * data_handler, common::data::type type):
     Log(logger), Filter(logger), common::data::Consumer(logger, data_handler), type_(type)
 {
+    ready_ = true;
 }
 
 Source::~Source()
