@@ -2,15 +2,28 @@
 #define LINK_H
 
 #include <memory>
+#include <queue>
 
-class Filter;
+#include "common/log.h"
 
-class Link
+#include "filter.h"
+#include "chunk.h"
+
+
+class Link : public common::Log
 {
 public:
+    Link(common::Logger loggger, Filter * src, Filter * dst);
+    virtual ~Link();
+
+    int link(Filter * src, Filter * dst);
+    int push(Chunk&& chunk);
+    int pop(Chunk& chunk);
+
 private:
-    std::shared_ptr<Filter> src;
-    std::shared_ptr<Filter> dst;
+    Filter * src_;
+    Filter * dst_;
+    std::queue<Chunk> chunk_queue_;
 };
 
 #endif /* LINK_H */

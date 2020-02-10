@@ -7,13 +7,15 @@
 
 class Filter;
 
-class Pipeline
+class Pipeline: public common::Log
 {
 public:
+    Pipeline();
+    virtual ~Pipeline();
+
     int run();
     int add_filter(Filter * filter);
-protected:
-    common::Logger logger_;
+
 private:
     std::vector<std::unique_ptr<Filter>> filters_;
 };

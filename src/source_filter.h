@@ -11,14 +11,20 @@ namespace filter
 class Source: public Filter, public common::data::Consumer
 {
 public:
-    Source(common::Logger logger, common::data::Handler * data_handler);
+    Source(common::Logger logger, common::data::Handler * data_handler, common::data::type type);
     ~Source();
 
     virtual int activate();
 
-    int pop_us(common::data::ByteBuffer& buf);
+    int set_format(uint16_t sample_size, uint16_t nb_samples, uint16_t nb_slots);
+    int set_nb_frames(uint16_t nb_frames);
 
 private:
+    common::data::type type_;
+    uint16_t sample_size_;
+    uint16_t nb_samples_;
+    uint16_t nb_slots_;
+    uint16_t nb_frames_;
 };
 
 } /* namespace filter */
