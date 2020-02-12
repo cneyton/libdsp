@@ -10,11 +10,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Allow static library to be included in another lib (used for python wrapping)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-add_subdirectory(dependencies)
-
 add_library(dsp STATIC "")
 
 add_subdirectory(src)
+add_subdirectory(dependencies)
 
 target_include_directories(dsp
     PUBLIC
@@ -22,8 +21,7 @@ target_include_directories(dsp
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     )
 
-target_link_libraries(dsp
-    PUBLIC common armadillo)
+target_link_libraries(dsp PUBLIC common sigpack)
 
 target_compile_options(dsp PUBLIC -Werror -Wall -Wextra)
 
