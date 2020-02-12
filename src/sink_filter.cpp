@@ -16,9 +16,10 @@ Sink::~Sink()
 int Sink::activate()
 {
     Chunk chunk(logger_);
-    inputs_.at(0)->pop(chunk);
-
-    chunk.print();
+    if (inputs_.at(0)->pop(chunk))
+        chunk.print();
+    else
+        ready_ = false;
     return 0;
 }
 

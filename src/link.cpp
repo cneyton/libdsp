@@ -35,7 +35,9 @@ int Link::push(Chunk&& chunk)
 
 int Link::pop(Chunk& chunk)
 {
+    if (chunk_queue_.empty())
+        return 0;
     chunk = chunk_queue_.front();
     chunk_queue_.pop();
-    return 0;
+    return 1;
 }

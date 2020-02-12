@@ -36,15 +36,8 @@ int Source::activate()
     int ret;
     std::vector<common::data::ByteBuffer> data;
 
-    common::data::ByteBuffer buf
-        = {1,  10, 2,  0, 3,  0, 4,  0, 5,  0, 6,  0, 7,  0, 8,  0, 9,  0, 10, 0,
-           11, 10, 12, 0, 13, 0, 14, 0, 15, 0, 16, 0, 17, 0, 18, 0, 19, 0, 20, 0};
-
-    //ret = pop_chunk(type_, nb_frames_, data);
-    //common_die_zero(logger_, ret, -1, "source {} failed to pop chunk", this->name_);
-
-    data.push_back(buf);
-    data.push_back(buf);
+    ret = pop_chunk(type_, nb_frames_, data);
+    common_die_zero(logger_, ret, -1, "source {} failed to pop chunk", this->name_);
 
     Chunk chunk(logger_, nb_frames_, nb_samples_, nb_slots_);
 

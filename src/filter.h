@@ -22,6 +22,7 @@ public:
 
     bool is_ready() const {return ready_;};
     void set_ready()      {ready_ = true;};
+    void reset_ready()    {ready_ = false;};
 
     std::string get_name() const {return name_;};
 

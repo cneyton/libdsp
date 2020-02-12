@@ -31,7 +31,11 @@ int Pipeline::run()
         if (filter->is_ready()) {
             ret = filter->activate();
             common_die_zero(logger_, ret, -1, "failed to activate filter {}", filter->get_name());
+            filter->reset_ready();
+            return 1;
         }
     }
+    // rerun all the filters to reactivate the sources
+    std::for_each(filters_.begin(), filters_.end(), [](Filter* f){f->set_ready();});
     return 0;
 }
