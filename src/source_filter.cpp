@@ -52,6 +52,9 @@ int Source::activate()
         i++;
     }
 
+    if (verbose_)
+        chunk->print();
+
     outputs_.at(0)->push(chunk);
     return 0;
 }

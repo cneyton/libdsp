@@ -52,6 +52,12 @@ int IIR<T>::activate()
             out = filters_[n].filter(in);
         }
     }
+
+    if (verbose_) {
+        in_chunk->print();
+        out_chunk->print();
+    }
+
     outputs_.at(0)->push(out_chunk);
     return 0;
 }

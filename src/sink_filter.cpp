@@ -17,10 +17,11 @@ Sink::~Sink()
 int Sink::activate()
 {
     auto chunk = std::make_shared<Chunk>(logger_);
-    if (inputs_.at(0)->pop(chunk))
-        chunk->print();
-    else
+    if (inputs_.at(0)->pop(chunk)) {
+        if (verbose_) chunk->print();
+    } else {
         ready_ = false;
+    }
     return 0;
 }
 

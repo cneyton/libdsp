@@ -24,6 +24,8 @@ public:
     void set_ready()      {ready_ = true;};
     void reset_ready()    {ready_ = false;};
 
+    void set_verbose()    {verbose_ = true;};
+
     std::string get_name() const {return name_;};
 
 protected:
@@ -33,7 +35,8 @@ protected:
     std::vector<Link*> inputs_;
     std::vector<Link*> outputs_;
 
-    bool ready_ = false;
+    bool ready_   = false;
+    bool verbose_ = false;
 };
 
 #endif /* FILTER_H */
