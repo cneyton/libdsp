@@ -17,13 +17,13 @@ public:
     virtual ~Link();
 
     int link(Filter * src, Filter * dst);
-    int push(Chunk&& chunk);
-    int pop(Chunk& chunk);
+    int push(std::shared_ptr<Chunk> chunk);
+    int pop(std::shared_ptr<Chunk>& chunk);
 
 private:
-    Filter * src_;
-    Filter * dst_;
-    std::queue<Chunk> chunk_queue_;
+    Filter * src_ = nullptr;
+    Filter * dst_ = nullptr;
+    std::queue<std::shared_ptr<Chunk>> chunk_queue_;
 };
 
 #endif /* LINK_H */

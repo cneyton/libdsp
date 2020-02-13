@@ -1,5 +1,6 @@
 #include "pipeline.h"
 #include "filter.h"
+#include <memory>
 
 Pipeline::Pipeline(common::Logger logger): Log(logger)
 {
@@ -20,7 +21,7 @@ int Pipeline::add_filter(Filter * filter)
 
 int Pipeline::link(Filter * src, Filter * dst)
 {
-    links_.emplace_back(logger_, src, dst);
+    links_.push_back(std::make_unique<Link>(logger_, src, dst));
     return 0;
 }
 

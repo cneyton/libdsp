@@ -2,6 +2,7 @@
 #define PIPELINE_H
 
 #include <vector>
+#include <memory>
 #include "common/log.h"
 
 #include "filter.h"
@@ -19,7 +20,7 @@ public:
 
 private:
     std::vector<Filter*> filters_;
-    std::vector<Link>    links_;
+    std::vector<std::unique_ptr<Link>>    links_;
 };
 
 #endif

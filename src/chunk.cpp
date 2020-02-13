@@ -1,12 +1,17 @@
 #include "chunk.h"
 #include "common/log.h"
 
-Chunk::Chunk(common::Logger logger): Log(logger), arma::cx_fcube()
+Chunk::Chunk(common::Logger logger): Log(logger), arma::cx_cube()
 {
 }
 
 Chunk::Chunk(common::Logger logger, uint16_t n_frames, uint16_t n_samples, uint16_t n_slots) :
-    Log(logger), arma::cx_fcube(n_frames, n_samples, n_slots)
+    Log(logger), arma::cx_cube(n_frames, n_samples, n_slots)
+{
+}
+
+Chunk::Chunk(common::Logger logger, const arma::SizeCube& size):
+    Log(logger), arma::cx_cube(size)
 {
 }
 
@@ -33,7 +38,7 @@ int Chunk::fill_frame(common::data::ByteBuffer& buf, uint16_t frame_nb)
         std::copy(it, it + sizeof(Q), (uint8_t*)&Q);
         it += sizeof(Q);
 
-        this->at(frame_nb, j, k) = arma::cx_float(I, Q);
+        this->at(frame_nb, j, k) = arma::cx_double(I, Q);
         n++;
         j = n % this->n_cols;
         k = n / this->n_cols;

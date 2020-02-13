@@ -1,6 +1,7 @@
 #include "sink_filter.h"
 #include "chunk.h"
 #include "link.h"
+#include <memory>
 
 namespace filter
 {
@@ -15,9 +16,9 @@ Sink::~Sink()
 
 int Sink::activate()
 {
-    Chunk chunk(logger_);
+    auto chunk = std::make_shared<Chunk>(logger_);
     if (inputs_.at(0)->pop(chunk))
-        chunk.print();
+        chunk->print();
     else
         ready_ = false;
     return 0;

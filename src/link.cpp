@@ -1,8 +1,8 @@
 #include "link.h"
 
 
-Link::Link(common::Logger logger, Filter * src, Filter * dst): Log(logger), src_(src), dst_(dst),
-    chunk_queue_()
+Link::Link(common::Logger logger, Filter * src, Filter * dst): Log(logger),
+    src_(src), dst_(dst), chunk_queue_()
 {
     link(src, dst);
 }
@@ -26,14 +26,14 @@ int Link::link(Filter * src, Filter * dst)
     return 0;
 }
 
-int Link::push(Chunk&& chunk)
+int Link::push(std::shared_ptr<Chunk> chunk)
 {
-    chunk_queue_.push(std::move(chunk));
+    chunk_queue_.emplace(chunk);
     dst_->set_ready();
     return 0;
 }
 
-int Link::pop(Chunk& chunk)
+int Link::pop(std::shared_ptr<Chunk>& chunk)
 {
     if (chunk_queue_.empty())
         return 0;
