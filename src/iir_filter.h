@@ -26,7 +26,6 @@ private:
     std::vector<sp::IIR_filt<T, double, T>> filters_;
 };
 
-
 } /* namespace filter */
 
 #include "iir_filter.ipp"
