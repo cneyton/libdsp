@@ -2,6 +2,7 @@ set(files
     source_filter_test.cpp
     iir_filter_test.cpp
     fft_filter_test.cpp
+    fd_filter_test.cpp
     )
 foreach(file ${files})
     get_filename_component(file_basename ${file} NAME_WE)
