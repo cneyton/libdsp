@@ -3,3 +3,4 @@ build/
 tags
 compile_commands.json
 .clangd/
+.ctags.d/
