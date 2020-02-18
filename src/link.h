@@ -16,6 +16,21 @@ public:
         Log(logger), src_(src), dst_(dst) {}
     virtual ~LinkInterface() {}
 
+    int link(Filter * src, Filter * dst)
+    {
+        src_ = src;
+        dst_ = dst;
+
+        int ret;
+        ret = src->add_output(*this);
+        common_die_zero(logger_, ret, -1, "failed to add link to src");
+
+        ret = dst->add_input(*this);
+        common_die_zero(logger_, ret, -2, "failed to add link to dst");
+
+        return 0;
+    }
+
 protected:
     Filter * src_ = nullptr;
     Filter * dst_ = nullptr;
@@ -32,21 +47,6 @@ public:
     }
 
     virtual ~Link() {}
-
-    int link(Filter * src, Filter * dst)
-    {
-        src_ = src;
-        dst_ = dst;
-
-        int ret;
-        ret = src->add_output(*this);
-        common_die_zero(logger_, ret, -1, "failed to add link to src");
-
-        ret = dst->add_input(*this);
-        common_die_zero(logger_, ret, -2, "failed to add link to dst");
-
-        return 0;
-    }
 
     int push(std::shared_ptr<Chunk<T>> chunk)
     {
