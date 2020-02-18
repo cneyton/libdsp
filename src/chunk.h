@@ -5,17 +5,39 @@
 #include "common/data.h"
 #include "common/log.h"
 
-class Chunk: public common::Log, public arma::cx_cube
+template<typename T>
+class Chunk: public common::Log, public arma::Cube<T>
 {
 public:
-    Chunk(common::Logger logger);
-    Chunk(common::Logger logger, uint16_t n_frames, uint16_t n_samples, uint16_t n_slots);
-    Chunk(common::Logger logger, const arma::SizeCube& size);
-    virtual ~Chunk();
+    Chunk(common::Logger logger): Log(logger), arma::Cube<T>() {}
+    Chunk(common::Logger logger, const arma::SizeCube& size): Log(logger), arma::Cube<T>(size) {}
+    virtual ~Chunk() {}
 
-    int fill_frame(common::data::ByteBuffer& buf, uint16_t frame_nb);
+    int fill_frame(common::data::ByteBuffer& buf, uint16_t frame_nb)
+    {
+        auto it = buf.cbegin();
+        uint16_t j = 0, k = 0;
+        uint32_t n = 0;
+        int16_t I, Q;
 
-private:
+        if(buf.size() != this->n_cols * this->n_slices * 2 * sizeof(I))
+            common_die(logger_, -1, "invalid buffer size");
+
+        while(it != buf.cend())
+        {
+            std::copy(it, it + sizeof(I), (uint8_t*)&I);
+            it += sizeof(I);
+
+            std::copy(it, it + sizeof(Q), (uint8_t*)&Q);
+            it += sizeof(Q);
+
+            this->at(frame_nb, j, k) = arma::cx_double(I, Q);
+            n++;
+            j = n % this->n_cols;
+            k = n / this->n_cols;
+        }
+        return 0;
+    }
 };
 
-#endif /* end of include guard: CHUNK_H */
+#endif /* CHUNK_H */

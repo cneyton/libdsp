@@ -6,17 +6,26 @@
 
 #include "common/log.h"
 
-class Link;
+class LinkInterface;
 class Pipeline;
 
 class Filter: virtual public common::Log
 {
 public:
-    Filter(common::Logger logger);
-    Filter(common::Logger logger, std::string name);
+    Filter(common::Logger logger): Log(logger) {}
+    Filter(common::Logger logger, std::string name): Log(logger), name_(name) {}
 
-    int add_input(Link& link);
-    int add_output(Link& link);
+    int add_input(LinkInterface& link)
+    {
+        inputs_.push_back(&link);
+        return 0;
+    }
+
+    int add_output(LinkInterface& link)
+    {
+        outputs_.push_back(&link);
+        return 0;
+    }
 
     virtual int activate() = 0;
 
@@ -32,8 +41,8 @@ protected:
     std::string name_;
 
     Pipeline * pipeline_;
-    std::vector<Link*> inputs_;
-    std::vector<Link*> outputs_;
+    std::vector<LinkInterface*> inputs_;
+    std::vector<LinkInterface*> outputs_;
 
     bool ready_   = false;
     bool verbose_ = false;

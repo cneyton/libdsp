@@ -2,19 +2,30 @@
 #define SINK_FILTER_H
 
 #include "filter.h"
+#include "chunk.h"
+#include "link.h"
 
 namespace filter
 {
 
-class Sink: public Filter
+template<typename T>
+class sink: public Filter
 {
 public:
-    Sink(common::Logger logger);
-    virtual ~Sink();
+    sink(common::Logger logger): Log(logger), Filter(logger) {}
+    virtual ~sink() {}
 
-    virtual int activate();
-
-private:
+    virtual int activate()
+    {
+        auto chunk = std::make_shared<Chunk<T>>(logger_);
+        auto input = dynamic_cast<Link<T>*>(inputs_.at(0));
+        if (input->pop(chunk)) {
+            if (verbose_) chunk->print();
+        } else {
+            ready_ = false;
+        }
+        return 0;
+    }
 };
 
 } /* namespace filter */

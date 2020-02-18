@@ -14,7 +14,8 @@ class fd: public Filter
 {
 public:
     fd(common::Logger logger, arma::uword nfft, arma::vec window):
-        Log(logger), Filter(logger), nfft_(nfft),fftw_(sp::FFTW(nfft, FFTW_MEASURE)), window_(window)
+        Log(logger), Filter(logger), nfft_(nfft),
+        fftw_(sp::FFTW(nfft, FFTW_MEASURE)), window_(window)
     {
         /* TODO: do this at link  <14-02-20, cneyton> */
         // Create fftw plan by first application of fft
@@ -28,21 +29,21 @@ public:
     {
         log_debug(logger_, "fd filter {} activated", this->name_);
 
-        auto in_chunk = std::make_shared<Chunk>(logger_);
-        if (!inputs_.at(0)->pop(in_chunk)) {
+        auto in_chunk = std::make_shared<Chunk<T1>>(logger_);
+        auto input    = dynamic_cast<Link<T1>*>(inputs_.at(0));
+        if (!input->pop(in_chunk)) {
             ready_ = false;
             return 0;
         }
 
         auto size = arma::size(*in_chunk);
-        auto out_chunk = std::make_shared<Chunk>(logger_, arma::size(1, size.n_cols, size.n_slices));
+        auto out_chunk = std::make_shared<Chunk<T2>>(logger_,
+                                                     arma::size(1, size.n_cols, size.n_slices));
 
         for (uint k = 0; k < size.n_slices; k++) {
             for (uint j = 0; j < size.n_cols; j++) {
                 arma::Col<T1> in = in_chunk->slice(k).col(j);
-                //in.print();
                 fftw_.fft_cx(in, in);
-                //in.print();
                 arma::Col<T2> psd = arma::square(arma::abs(in));
                 arma::Col<T2> w   = arma::regspace<arma::Col<T2>>(0, nfft_-1)
                     - static_cast<T2>(nfft_)/2;
@@ -57,7 +58,8 @@ public:
             out_chunk->print();
         }
 
-        outputs_.at(0)->push(out_chunk);
+        auto output = dynamic_cast<Link<T2>*>(outputs_.at(0));
+        output->push(out_chunk);
 
         return 0;
     }

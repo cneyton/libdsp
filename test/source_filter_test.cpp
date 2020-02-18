@@ -1,5 +1,6 @@
 #include <thread>
 #include <chrono>
+#include <random>
 
 #include "common/log.h"
 #include "common/data.h"
@@ -11,15 +12,19 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 common::Logger logger(spdlog::stdout_color_mt("dsp"));
 
-size_t elt_size = 40;
+uint16_t nb_samples = 10;
+uint16_t nb_slots   = 1;
+uint16_t nb_frames  = 2;
+size_t elt_size = nb_samples * nb_slots * 4;
 
 void producer_th_func(common::data::Producer& p)
 {
-    common::data::ByteBuffer buf
-        = {1,  10, 2,  0, 3,  0, 4,  0, 5,  0, 6,  0, 7,  0, 8,  0, 9,  0, 10, 0,
-           11, 10, 12, 0, 13, 0, 14, 0, 15, 0, 16, 0, 17, 0, 18, 0, 19, 0, 20, 0};
-
+    std::random_device rd;
+    std::uniform_int_distribution dist(0, 254);
     while (1) {
+        common::data::ByteBuffer buf(elt_size, 1);
+        std::transform(buf.begin(), buf.end(), buf.begin(),
+                       [&](int x){return x * static_cast<uint8_t>(dist(rd));});
         p.push(common::data::type::us, buf);
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
@@ -43,15 +48,16 @@ int main()
 
     Pipeline pipeline(logger);
 
-    auto source_filter = new filter::Source(logger, &data_handler, common::data::type::us);
-    source_filter->set_format(sizeof(arma::cx_float), 5, 2);
-    source_filter->set_nb_frames(2);
+    auto source_filter = new filter::source<arma::cx_double>(logger, &data_handler,
+                                                             common::data::type::us);
+    source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
     pipeline.add_filter(source_filter);
 
-    auto sink_filter = new filter::Sink(logger);
+    auto sink_filter = new filter::sink<arma::cx_double>(logger);
+    sink_filter->set_verbose();
     pipeline.add_filter(sink_filter);
 
-    pipeline.link(source_filter, sink_filter);
+    pipeline.link<arma::cx_double>(source_filter, sink_filter);
 
     data_handler.reinit_queue(common::data::type::us, elt_size, 100);
 

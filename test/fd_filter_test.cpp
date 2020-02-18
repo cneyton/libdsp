@@ -44,26 +44,26 @@ void pipeline_th_func(Pipeline& pipeline)
 
 int main()
 {
-    logger->set_level(spdlog::level::debug);
+    logger->set_level(spdlog::level::info);
     common::data::Handler data_handler(logger);
     common::data::Producer producer(logger, &data_handler);
 
     Pipeline pipeline(logger);
 
-    auto source_filter = new filter::Source(logger, &data_handler, common::data::type::us);
-    source_filter->set_format(sizeof(arma::cx_float), nb_samples, nb_slots);
-    source_filter->set_nb_frames(nb_frames);
+    auto source_filter = new filter::source<arma::cx_double>(logger, &data_handler,
+                                                             common::data::type::us);
+    source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
     pipeline.add_filter(source_filter);
 
-    auto sink_filter = new filter::Sink(logger);
+    auto sink_filter = new filter::sink<double>(logger);
     pipeline.add_filter(sink_filter);
 
-    auto fd_filter = new filter::fd<arma::cx_double, double>(logger, nb_frames, arma::vec(nb_frames, arma::fill::ones));
-    //fd_filter->set_verbose();
+    auto fd_filter = new filter::fd<arma::cx_double, double>(logger, nb_frames,
+                                                             arma::vec(nb_frames, arma::fill::ones));
     pipeline.add_filter(fd_filter);
 
-    pipeline.link(source_filter, fd_filter);
-    pipeline.link(fd_filter, sink_filter);
+    pipeline.link<arma::cx_double>(source_filter, fd_filter);
+    pipeline.link<double>(fd_filter, sink_filter);
 
     data_handler.reinit_queue(common::data::type::us, elt_size, 1000);
 

@@ -1,5 +1,6 @@
 #include <thread>
 #include <chrono>
+#include <random>
 
 #include "common/log.h"
 #include "common/data.h"
@@ -19,8 +20,12 @@ size_t elt_size = nb_samples * nb_slots * 4;
 
 void producer_th_func(common::data::Producer& p)
 {
+    std::random_device rd;
+    std::uniform_int_distribution dist(0, 254);
     while (1) {
         common::data::ByteBuffer buf(elt_size, 1);
+        std::transform(buf.begin(), buf.end(), buf.begin(),
+                       [&](int x){return x * static_cast<uint8_t>(dist(rd));});
         p.push(common::data::type::us, buf);
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
@@ -45,12 +50,12 @@ int main()
 
     Pipeline pipeline(logger);
 
-    auto source_filter = new filter::Source(logger, &data_handler, common::data::type::us);
-    source_filter->set_format(sizeof(arma::cx_float), nb_samples, nb_slots);
-    source_filter->set_nb_frames(nb_frames);
+    auto source_filter = new filter::source<arma::cx_double>(logger, &data_handler,
+                                                             common::data::type::us);
+    source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
     pipeline.add_filter(source_filter);
 
-    auto sink_filter = new filter::Sink(logger);
+    auto sink_filter = new filter::sink<arma::cx_double>(logger);
     pipeline.add_filter(sink_filter);
 
     auto b = arma::vec(3);
@@ -58,11 +63,11 @@ int main()
     b << 1.7 << 2.8 << 3.6 << arma::endr;
     a << 1   << 5.4 << 1.4 << arma::endr;
 
-    auto iir_filter = new filter::IIR<arma::cx_double>(logger, nb_slots * nb_samples, b, a);
+    auto iir_filter = new filter::iir<arma::cx_double>(logger, nb_slots * nb_samples, b, a);
     pipeline.add_filter(iir_filter);
 
-    pipeline.link(source_filter, iir_filter);
-    pipeline.link(iir_filter, sink_filter);
+    pipeline.link<arma::cx_double>(source_filter, iir_filter);
+    pipeline.link<arma::cx_double>(iir_filter, sink_filter);
 
     data_handler.reinit_queue(common::data::type::us, elt_size, 100);
 
