@@ -53,14 +53,14 @@ int main()
     auto source_filter = new filter::source<arma::cx_double>(logger, &data_handler,
                                                              common::data::type::us);
     source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
-    pipeline.add_filter(source_filter);
+    pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
 
     auto sink_filter = new filter::sink<double>(logger);
-    pipeline.add_filter(sink_filter);
+    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
     auto fd_filter = new filter::fd<arma::cx_double, double>(logger, nb_frames,
                                                              arma::vec(nb_frames, arma::fill::ones));
-    pipeline.add_filter(fd_filter);
+    pipeline.add_filter(std::unique_ptr<Filter>(fd_filter));
 
     pipeline.link<arma::cx_double>(source_filter, fd_filter);
     pipeline.link<double>(fd_filter, sink_filter);

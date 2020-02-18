@@ -1,3 +1,4 @@
+#include <memory>
 #include <thread>
 #include <chrono>
 #include <random>
@@ -53,10 +54,10 @@ int main()
     auto source_filter = new filter::source<arma::cx_double>(logger, &data_handler,
                                                              common::data::type::us);
     source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
-    pipeline.add_filter(source_filter);
+    pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
 
     auto sink_filter = new filter::sink<arma::cx_double>(logger);
-    pipeline.add_filter(sink_filter);
+    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
     auto b = arma::vec(3);
     auto a = arma::vec(3);
@@ -64,7 +65,7 @@ int main()
     a << 1   << 5.4 << 1.4 << arma::endr;
 
     auto iir_filter = new filter::iir<arma::cx_double>(logger, nb_slots * nb_samples, b, a);
-    pipeline.add_filter(iir_filter);
+    pipeline.add_filter(std::unique_ptr<Filter>(iir_filter));
 
     pipeline.link<arma::cx_double>(source_filter, iir_filter);
     pipeline.link<arma::cx_double>(iir_filter, sink_filter);

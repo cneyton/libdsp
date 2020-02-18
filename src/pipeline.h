@@ -12,13 +12,7 @@ class Pipeline: public common::Log
 {
 public:
     Pipeline(common::Logger logger): Log(logger) {}
-
-    virtual ~Pipeline()
-    {
-        for (auto& filter: filters_) {
-            delete filter;
-        }
-    }
+    virtual ~Pipeline() {}
 
     int run()
     {
@@ -33,13 +27,15 @@ public:
             }
         }
         // rerun all the filters to reactivate the sources
-        std::for_each(filters_.begin(), filters_.end(), [](Filter* f){f->set_ready();});
+        for (auto& filter: filters_)
+            filter->set_ready();
+
         return 0;
     }
 
-    int add_filter(Filter * filter)
+    int add_filter(std::unique_ptr<Filter> filter)
     {
-        filters_.push_back(filter);
+        filters_.push_back(std::move(filter));
         return 0;
     }
 
@@ -51,8 +47,8 @@ public:
     }
 
 private:
-    std::vector<Filter*> filters_;
-    std::vector<std::unique_ptr<LinkInterface>>    links_;
+    std::vector<std::unique_ptr<Filter>>         filters_;
+    std::vector<std::unique_ptr<LinkInterface>>  links_;
 };
 
 #endif
