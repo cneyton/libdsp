@@ -4,6 +4,7 @@ set(files
     #fft_filter_test.cpp
     fd_filter_test.cpp
     correlate_test.cpp
+    peaks_test.cpp
     )
 foreach(file ${files})
     get_filename_component(file_basename ${file} NAME_WE)
