@@ -16,7 +16,7 @@ common::Logger logger(spdlog::stdout_color_mt("dsp"));
 uint16_t nb_samples = 10;
 uint16_t nb_slots   = 1;
 uint16_t nb_frames  = 2;
-size_t elt_size = nb_samples * nb_slots * 4;
+size_t   elt_size   = nb_samples * nb_slots * 2;
 
 void producer_th_func(common::data::Producer& p)
 {
@@ -42,6 +42,7 @@ void pipeline_th_func(Pipeline& pipeline)
     }
 }
 
+/* TODO: we should test different type of input/output <20-02-20, cneyton> */
 int main()
 {
     common::data::Handler data_handler(logger);
@@ -49,16 +50,17 @@ int main()
 
     Pipeline pipeline(logger);
 
-    auto source_filter = new filter::source<arma::cx_double>(logger, &data_handler,
+    //using iT = filter::iq<int16_t>;
+    auto source_filter = new filter::source<int16_t, double>(logger, &data_handler,
                                                              common::data::type::us);
     source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
 
-    auto sink_filter = new filter::sink<arma::cx_double>(logger);
+    auto sink_filter = new filter::sink<double>(logger);
     sink_filter->set_verbose();
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
-    pipeline.link<arma::cx_double>(source_filter, sink_filter);
+    pipeline.link<double>(source_filter, sink_filter);
 
     data_handler.reinit_queue(common::data::type::us, elt_size, 100);
 

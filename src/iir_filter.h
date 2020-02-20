@@ -53,8 +53,8 @@ public:
             for (uint j = 0; j < size.n_cols; j++) {
                 auto in_ptr  = in_chunk->slice_colptr(k, j);
                 auto out_ptr = out_chunk->slice_colptr(k, j);
-                arma::Col<T> in(in_ptr, size.n_rows, false, true) ;
-                arma::Col<T> out(out_ptr, size.n_rows, false, true) ;
+                arma::Col<T> in(in_ptr, size.n_rows, false, true);
+                arma::Col<T> out(out_ptr, size.n_rows, false, true);
                 out = filters_[n].filter(in);
             }
         }

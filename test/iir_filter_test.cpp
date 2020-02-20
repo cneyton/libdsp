@@ -51,7 +51,8 @@ int main()
 
     Pipeline pipeline(logger);
 
-    auto source_filter = new filter::source<arma::cx_double>(logger, &data_handler,
+    using iT = filter::iq<int16_t>;
+    auto source_filter = new filter::source<iT, arma::cx_double>(logger, &data_handler,
                                                              common::data::type::us);
     source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));

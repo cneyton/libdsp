@@ -23,7 +23,7 @@ public:
         fftw_.fft_cx(vec, vec);
     }
 
-    virtual ~fd() {};
+    virtual ~fd() {}
 
     virtual int activate()
     {

@@ -10,7 +10,7 @@
 namespace filter
 {
 
-template<typename T>
+template<typename T1, typename T2>
 class source: public Filter, public common::data::Consumer
 {
 public:
@@ -20,7 +20,7 @@ public:
 
     int set_chunk_size(uint16_t nb_frames, uint16_t nb_samples, uint16_t nb_slots)
     {
-        nb_frames_ = nb_frames;
+        nb_frames_  = nb_frames;
         nb_samples_ = nb_samples;
         nb_slots_   = nb_slots;
         return 0;
@@ -38,12 +38,12 @@ public:
         ret = pop_chunk(type_, chunk_size.n_rows, data);
         common_die_zero(logger_, ret, -1, "source {} failed to pop chunk", this->name_);
 
-        auto chunk = std::make_shared<Chunk<T>>(logger_, chunk_size);
+        auto chunk = std::make_shared<Chunk<T2>>(logger_, chunk_size);
 
         uint16_t i = 0;
         for(auto& buf: data)
         {
-            ret = chunk->fill_frame(buf, i);
+            ret = fill_frame(*chunk, buf, i);
             common_die_zero(logger_, ret, -2, "source {} failed to fill frame", this->name_);
             i++;
         }
@@ -51,18 +51,105 @@ public:
         if (verbose_)
             chunk->print();
 
-        Link<T> * output = dynamic_cast<Link<T>*>(outputs_.at(0));
+        Link<T2> * output = dynamic_cast<Link<T2>*>(outputs_.at(0));
         output->push(chunk);
         return 0;
     }
-
 
 private:
     common::data::type type_;
     uint16_t nb_frames_;
     uint16_t nb_samples_;
     uint16_t nb_slots_;
+
+    int fill_frame(Chunk<T2>& chunk, const common::data::ByteBuffer& buf,
+                   const arma::uword frame_nb) const;
 };
+
+/* TODO: move somewhere else <20-02-20, cneyton> */
+template<typename T>
+struct iq
+{
+    using elem_type = T;
+    T i; T q;
+};
+
+template<typename T1, typename T2>
+inline
+int source<T1, T2>::fill_frame(Chunk<T2>& chunk, const common::data::ByteBuffer& buf,
+                               const arma::uword frame_nb) const
+{
+    if(buf.size() != chunk.n_cols * chunk.n_slices * sizeof(T1))
+        common_die(logger_, -1, "invalid buffer size");
+
+    auto it = buf.cbegin();
+    arma::uword j = 0, k = 0;
+    arma::uword n = 0;
+    while(it != buf.cend())
+    {
+        T1 x;
+        std::copy(it, it + sizeof(T1), (uint8_t*)&x);
+        it += sizeof(T1);
+        chunk.at(frame_nb, j, k) = T2(x);
+        n++;
+        j = n % chunk.n_cols;
+        k = n / chunk.n_cols;
+    }
+    return 0;
+}
+
+template<>
+inline
+int source<iq<int16_t>, arma::cx_double>::fill_frame(Chunk<arma::cx_double>& chunk,
+                                                     const common::data::ByteBuffer& buf,
+                                                     const arma::uword frame_nb) const
+{
+    if(buf.size() != chunk.n_cols * chunk.n_slices * sizeof(iq<int16_t>)) {
+        common_die(logger_, -1, "invalid buffer size");
+    }
+
+    auto it = buf.cbegin();
+    arma::uword j = 0, k = 0;
+    arma::uword n = 0;
+    while(it != buf.cend())
+    {
+        iq<int16_t> x;
+        std::copy(it, it + sizeof(x), (uint8_t*)&x);
+        it += sizeof(x);
+        chunk.at(frame_nb, j, k) = arma::cx_double(x.i, x.q);
+        n++;
+        j = n % chunk.n_cols;
+        k = n / chunk.n_cols;
+    }
+    return 0;
+}
+
+template<>
+inline
+int source<iq<int16_t>, arma::cx_float>::fill_frame(Chunk<arma::cx_float>& chunk,
+                                                    const common::data::ByteBuffer& buf,
+                                                    const arma::uword frame_nb) const
+{
+    if(buf.size() != chunk.n_cols * chunk.n_slices * sizeof(iq<int16_t>)) {
+        common_die(logger_, -1, "invalid buffer size");
+    }
+
+    auto it = buf.cbegin();
+    arma::uword j = 0, k = 0;
+    arma::uword n = 0;
+    while(it != buf.cend())
+    {
+        iq<int16_t> x;
+        std::copy(it, it + sizeof(x), (uint8_t*)&x);
+        it += sizeof(x);
+        chunk.at(frame_nb, j, k) = arma::cx_float(x.i, x.q);
+        n++;
+        j = n % chunk.n_cols;
+        k = n / chunk.n_cols;
+    }
+    return 0;
+}
+
 
 } /* namespace filter */
 
