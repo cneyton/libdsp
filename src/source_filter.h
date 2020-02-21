@@ -15,7 +15,11 @@ class source: public Filter, public common::data::Consumer
 {
 public:
     source(common::Logger logger, common::data::Handler * data_handler, common::data::type type):
-        Log(logger), Filter(logger), common::data::Consumer(logger, data_handler), type_(type) {}
+        Log(logger), Filter(logger), common::data::Consumer(logger, data_handler), type_(type)
+    {
+        ready_ = true;
+    }
+
     ~source() {}
 
     int set_chunk_size(uint16_t nb_frames, uint16_t nb_samples, uint16_t nb_slots)

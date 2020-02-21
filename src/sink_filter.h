@@ -17,6 +17,8 @@ public:
 
     virtual int activate()
     {
+        log_debug(logger_, "sink {} activated", this->name_);
+
         auto chunk = std::make_shared<Chunk<T>>(logger_);
         auto input = dynamic_cast<Link<T>*>(inputs_.at(0));
         if (input->pop(chunk)) {
