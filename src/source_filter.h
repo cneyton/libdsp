@@ -91,10 +91,9 @@ int source<T1, T2>::fill_frame(Chunk<T2>& chunk, const common::data::ByteBuffer&
     arma::uword n = 0;
     while(it != buf.cend())
     {
-        T1 x;
-        std::copy(it, it + sizeof(T1), (uint8_t*)&x);
-        it += sizeof(T1);
-        chunk.at(frame_nb, j, k) = T2(x);
+        auto x = reinterpret_cast<const T1*>(&*it);
+        it += sizeof(*x);
+        chunk.at(frame_nb, j, k) = T2(*x);
         n++;
         j = n % chunk.n_cols;
         k = n / chunk.n_cols;
@@ -117,10 +116,9 @@ int source<iq<int16_t>, arma::cx_double>::fill_frame(Chunk<arma::cx_double>& chu
     arma::uword n = 0;
     while(it != buf.cend())
     {
-        iq<int16_t> x;
-        std::copy(it, it + sizeof(x), (uint8_t*)&x);
-        it += sizeof(x);
-        chunk.at(frame_nb, j, k) = arma::cx_double(x.i, x.q);
+        auto x = reinterpret_cast<const iq<int16_t>*>(&*it);
+        it += sizeof(*x);
+        chunk.at(frame_nb, j, k) = arma::cx_double(x->i, x->q);
         n++;
         j = n % chunk.n_cols;
         k = n / chunk.n_cols;
@@ -143,10 +141,9 @@ int source<iq<int16_t>, arma::cx_float>::fill_frame(Chunk<arma::cx_float>& chunk
     arma::uword n = 0;
     while(it != buf.cend())
     {
-        iq<int16_t> x;
-        std::copy(it, it + sizeof(x), (uint8_t*)&x);
-        it += sizeof(x);
-        chunk.at(frame_nb, j, k) = arma::cx_float(x.i, x.q);
+        auto x = reinterpret_cast<const iq<int16_t>*>(&*it);
+        it += sizeof(*x);
+        chunk.at(frame_nb, j, k) = arma::cx_float(x->i, x->q);
         n++;
         j = n % chunk.n_cols;
         k = n / chunk.n_cols;
