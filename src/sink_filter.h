@@ -23,8 +23,6 @@ public:
         auto input = dynamic_cast<Link<T>*>(inputs_.at(0));
         if (input->pop(chunk)) {
             if (verbose_) chunk->print();
-        } else {
-            ready_ = false;
         }
         return 0;
     }
