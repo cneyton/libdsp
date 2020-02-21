@@ -14,10 +14,13 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 common::Logger logger(spdlog::stdout_color_mt("dsp"));
 
+using iT = filter::iq<int16_t>;
+using oT = arma::cx_double;
+
 uint16_t nb_samples = 36;
 uint16_t nb_slots   = 7;
 uint16_t nb_frames  = 5;
-size_t elt_size = nb_samples * nb_slots * 4;
+size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
 
 void producer_th_func(common::data::Producer& p)
 {
@@ -51,13 +54,12 @@ int main()
 
     Pipeline pipeline(logger);
 
-    using iT = filter::iq<int16_t>;
-    auto source_filter = new filter::source<iT, arma::cx_double>(logger, &data_handler,
+    auto source_filter = new filter::source<iT, oT>(logger, &data_handler,
                                                              common::data::type::us);
     source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
 
-    auto sink_filter = new filter::sink<arma::cx_double>(logger);
+    auto sink_filter = new filter::sink<oT>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
     auto b = arma::vec(3);
@@ -68,8 +70,8 @@ int main()
     auto iir_filter = new filter::iir<arma::cx_double>(logger, nb_slots * nb_samples, b, a);
     pipeline.add_filter(std::unique_ptr<Filter>(iir_filter));
 
-    pipeline.link<arma::cx_double>(source_filter, iir_filter);
-    pipeline.link<arma::cx_double>(iir_filter, sink_filter);
+    pipeline.link<oT>(source_filter, iir_filter);
+    pipeline.link<oT>(iir_filter, sink_filter);
 
     data_handler.reinit_queue(common::data::type::us, elt_size, 100);
 
