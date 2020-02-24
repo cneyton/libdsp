@@ -15,7 +15,7 @@ template<typename T1 = double, typename T2 = double, typename T3 = T2>
 class fhr: public Filter
 {
 public:
-    fhr(common::Logger logger): Log(logger), Filter(logger) {}
+    fhr(common::Logger logger): Log(logger), Filter(logger, "fhr") {}
     virtual ~fhr() {}
 
     struct period_range
@@ -31,7 +31,6 @@ public:
         auto in_chunk = std::make_shared<Chunk<T1>>(logger_);
         auto input    = dynamic_cast<Link<T1>*>(inputs_.at(0));
         if (!input->pop(in_chunk)) {
-            ready_ = false;
             return 0;
         }
 
@@ -47,7 +46,7 @@ public:
                 arma::Col<T1> in(in_ptr, in_size.n_rows, false, true);
 
                 auto xcorr = correlate::xcorr(in, correlate::scale::unbiased);
-                xcorr = xcorr(in_size.n_cols - 1, xcorr.n_elem -1);
+                xcorr = xcorr.subvec(in_size.n_cols - 1, xcorr.n_elem -1);
 
                 auto idx_peaks = peaks::local_peaks(xcorr, radius_);
                 /* TODO: add threshold <20-02-20, cneyton> */
@@ -74,8 +73,8 @@ public:
                     corrcoef = ymax / xcorr[0];
                 }
 
-                (*out0_chunk)(j, k, 1) = fhr;
-                (*out1_chunk)(j, k, 1) = corrcoef;
+                (*out0_chunk)(j, k, 0) = fhr;
+                (*out1_chunk)(j, k, 0) = corrcoef;
             }
         }
 
