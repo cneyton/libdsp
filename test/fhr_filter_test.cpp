@@ -13,16 +13,37 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 common::Logger logger(spdlog::stdout_color_mt("dsp"));
 
-uint16_t nb_samples = 36;
-uint16_t nb_slots   = 7;
-uint16_t nb_frames  = 128;
-size_t elt_size = nb_samples * nb_slots * 2;
+using iT = int16_t;
+using oT = double;
+
+constexpr uint16_t nb_samples = 36;
+constexpr uint16_t nb_slots   = 7;
+constexpr uint16_t nb_frames  = 30;
+constexpr size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
+constexpr uint     nb_tot_frames = 10000;
+
+class Handler: public common::data::Handler
+{
+public:
+    Handler(common::Logger logger, Pipeline * pipeline):
+        common::data::Handler(logger), pipeline_(pipeline) {}
+    virtual ~Handler() {}
+
+    virtual int data_pushed()
+    {
+        pipeline_->resume();
+        return 0;
+    }
+
+private:
+    Pipeline * pipeline_;
+};
 
 void producer_th_func(common::data::Producer& p)
 {
     std::random_device rd;
     std::uniform_int_distribution dist(0, 254);
-    while (1) {
+    for (uint i = 0; i < nb_tot_frames; i++) {
         common::data::ByteBuffer buf(elt_size, 1);
         std::transform(buf.begin(), buf.end(), buf.begin(),
                        [&](int x){return x * static_cast<uint8_t>(dist(rd));});
@@ -33,48 +54,44 @@ void producer_th_func(common::data::Producer& p)
 
 void pipeline_th_func(Pipeline& pipeline)
 {
-    int ret;
-    while (1) {
-        ret = pipeline.run();
-        common_die_zero_void(logger, ret, "pipeline run error");
-        if (ret == 0) {
-        }
-    }
+    pipeline.run();
 }
 
 int main()
 {
     logger->set_level(spdlog::level::info);
-    common::data::Handler data_handler(logger);
-    common::data::Producer producer(logger, &data_handler);
 
     Pipeline pipeline(logger);
+    Handler data_handler(logger, &pipeline);
+    common::data::Producer producer(logger, &data_handler);
 
-    auto source_filter = new filter::source<int16_t, double>(logger, &data_handler,
-                                                    common::data::type::oxy);
+    auto source_filter = new filter::source<iT, oT>(logger, &data_handler, common::data::type::oxy);
     source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
 
-    auto sink_filter_0 = new filter::sink<double>(logger);
+    auto sink_filter_0 = new filter::sink<oT>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_0));
 
-    auto sink_filter_1 = new filter::sink<double>(logger);
+    auto sink_filter_1 = new filter::sink<oT>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
 
-    auto fhr_filter = new filter::fhr<double, double, double>(logger);
+    auto fhr_filter = new filter::fhr<oT, oT, oT>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(fhr_filter));
 
-    pipeline.link<double>(source_filter, fhr_filter);
-    pipeline.link<double>(fhr_filter, sink_filter_0);
-    pipeline.link<double>(fhr_filter, sink_filter_1);
+    pipeline.link<oT>(source_filter, fhr_filter);
+    pipeline.link<oT>(fhr_filter, sink_filter_0);
+    pipeline.link<oT>(fhr_filter, sink_filter_1);
 
     data_handler.reinit_queue(common::data::type::oxy, elt_size, 1000);
 
     std::thread pipeline_th(pipeline_th_func, std::ref(pipeline));
     std::thread producer_th(producer_th_func, std::ref(producer));
 
-    pipeline_th.join();
     producer_th.join();
+    pipeline.stop();
+    pipeline_th.join();
+
+    pipeline.print_stats();
 
     return 0;
 }

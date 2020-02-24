@@ -6,6 +6,8 @@
 #include <vector>
 #include <deque>
 
+#include <armadillo>
+
 #include "common/log.h"
 
 class LinkInterface;
