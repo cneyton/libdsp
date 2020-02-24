@@ -25,6 +25,10 @@ target_link_libraries(dsp INTERFACE common sigpack)
 
 target_compile_options(dsp INTERFACE -Werror -Wall -Wextra)
 
+if (DSP_PROFILE)
+target_compile_definitions(dsp INTERFACE DSP_PROFILE)
+endif()
+
 # Tests
 include(CTest)
 if(DSP_RUNTESTS)

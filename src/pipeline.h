@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <memory>
+#include <chrono>
 #include "common/log.h"
 
 #include "filter.h"
@@ -16,15 +17,28 @@ public:
 
     int run()
     {
+        return 0;
+    }
+
+    int run_once()
+    {
         int ret;
         for (auto& filter: filters_) {
             if (filter->is_ready()) {
+#ifdef DSP_PROFILE
+                auto start = std::chrono::high_resolution_clock::now();
+#endif
                 ret = filter->activate();
                 common_die_zero(logger_, ret, -1,
                                 "failed to activate filter {}", filter->get_name());
                 filter->reset_ready();
+#ifdef DSP_PROFILE
+                auto stop = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> diff = stop - start;
+                filter->update_stats(diff);
+#endif
+                }
                 return 1;
-            }
         }
         // rerun all the filters to reactivate the sources
         for (auto& filter: filters_)
@@ -37,6 +51,16 @@ public:
     {
         filters_.push_back(std::move(filter));
         return 0;
+    }
+
+    void print_stats()
+    {
+        for (auto& f: filters_) {
+            std::cout << "filter " << f->get_name() << std::endl;
+            std::cout << "   n_execs: " << f->get_n_execs() << std::endl;
+            std::cout << "   mean exec time: "
+                << f->get_mean_exec_time().count() << "s" << std::endl;
+        }
     }
 
     template<typename T>

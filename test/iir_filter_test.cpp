@@ -39,7 +39,7 @@ void pipeline_th_func(Pipeline& pipeline)
 {
     int ret;
     while (1) {
-        ret = pipeline.run();
+        ret = pipeline.run_once();
         common_die_zero_void(logger, ret, "pipeline run error");
         if (ret == 0) {
         }
@@ -80,6 +80,8 @@ int main()
 
     pipeline_th.join();
     producer_th.join();
+
+    pipeline.print_stats();
 
     return 0;
 }
