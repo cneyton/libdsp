@@ -19,9 +19,9 @@ class iir: public Filter
 {
 
 public:
-    iir(common::Logger logger): Log(logger), Filter(logger) {}
+    iir(common::Logger logger): Log(logger), Filter(logger, "iir") {}
 
-    iir(common::Logger logger, uint16_t nb_filters): Log(logger), Filter(logger),
+    iir(common::Logger logger, uint16_t nb_filters): Log(logger), Filter(logger, "iir"),
         filters_(std::vector<sp::IIR_filt<T, double, T>>(nb_filters))
     {
         std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.clear();});
@@ -42,7 +42,6 @@ public:
         auto in_chunk = std::make_shared<Chunk<T>>(logger_);
         auto input    = dynamic_cast<Link<T>*>(inputs_.at(0));
         if (!input->pop(in_chunk)) {
-            ready_ = false;
             return 0;
         }
         auto size = arma::size(*in_chunk);
@@ -56,6 +55,7 @@ public:
                 arma::Col<T> in(in_ptr, size.n_rows, false, true);
                 arma::Col<T> out(out_ptr, size.n_rows, false, true);
                 out = filters_[n].filter(in);
+                n++;
             }
         }
 
