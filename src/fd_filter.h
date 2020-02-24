@@ -14,7 +14,7 @@ class fd: public Filter
 {
 public:
     fd(common::Logger logger, arma::uword nfft, arma::vec window):
-        Log(logger), Filter(logger), nfft_(nfft),
+        Log(logger), Filter(logger, "fd"), nfft_(nfft),
         fftw_(sp::FFTW(nfft, FFTW_MEASURE)), window_(window)
     {
         /* TODO: do this at link  <14-02-20, cneyton> */
@@ -32,7 +32,6 @@ public:
         auto in_chunk = std::make_shared<Chunk<T1>>(logger_);
         auto input    = dynamic_cast<Link<T1>*>(inputs_.at(0));
         if (!input->pop(in_chunk)) {
-            ready_ = false;
             return 0;
         }
 
