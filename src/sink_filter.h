@@ -12,7 +12,7 @@ template<typename T>
 class sink: public Filter
 {
 public:
-    sink(common::Logger logger): Log(logger), Filter(logger) {}
+    sink(common::Logger logger): Log(logger), Filter(logger, "sink") {}
     virtual ~sink() {}
 
     virtual int activate()
