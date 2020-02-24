@@ -1,6 +1,8 @@
 #ifndef PIPELINE_H
 #define PIPELINE_H
 
+#include <condition_variable>
+#include <mutex>
 #include <vector>
 #include <memory>
 #include <chrono>
@@ -17,35 +19,43 @@ public:
 
     int run()
     {
-        return 0;
-    }
-
-    int run_once()
-    {
         int ret;
-        for (auto& filter: filters_) {
-            if (filter->is_ready()) {
-#ifdef DSP_PROFILE
-                auto start = std::chrono::high_resolution_clock::now();
-#endif
-                ret = filter->activate();
-                common_die_zero(logger_, ret, -1,
-                                "failed to activate filter {}", filter->get_name());
-                filter->reset_ready();
-#ifdef DSP_PROFILE
-                auto stop = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> diff = stop - start;
-                filter->update_stats(diff);
-#endif
-                }
-                return 1;
+        run_ = true;
+        while (run_) {
+            ret = run_once();
+            common_die_zero(logger_, ret, -1, "pipeline run error");
+            if (ret == 0) {
+                ret = wait();
+                common_die_zero(logger_, ret, -2, "pipeline wait error");
+            }
         }
-        // rerun all the filters to reactivate the sources
-        for (auto& filter: filters_)
-            filter->set_ready();
-
         return 0;
     }
+
+
+    int stop()
+    {
+        {
+            std::unique_lock<std::mutex> lk(mutex_);
+            run_ = false;
+        }
+        cond_.notify_all();
+        return 0;
+    }
+
+    int resume()
+    {
+        {
+            std::unique_lock<std::mutex> lk(mutex_);
+            // reactivate the sources
+            for (auto& filter: filters_)
+                if (filter->is_source())
+                    filter->set_ready();
+        }
+        cond_.notify_all();
+        return 0;
+    }
+
 
     int add_filter(std::unique_ptr<Filter> filter)
     {
@@ -73,6 +83,40 @@ public:
 private:
     std::vector<std::unique_ptr<Filter>>         filters_;
     std::vector<std::unique_ptr<LinkInterface>>  links_;
+
+    bool run_ = false;
+    std::condition_variable cond_;
+    std::mutex              mutex_;
+
+    int run_once()
+    {
+        int ret;
+        for (auto& filter: filters_) {
+            if (filter->is_ready()) {
+#ifdef DSP_PROFILE
+                auto start = std::chrono::high_resolution_clock::now();
+#endif
+                ret = filter->activate();
+                common_die_zero(logger_, ret, -1,
+                                "failed to activate filter {}", filter->get_name());
+                filter->reset_ready();
+#ifdef DSP_PROFILE
+                auto stop = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> diff = stop - start;
+                filter->update_stats(diff);
+#endif
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    int wait()
+    {
+        std::unique_lock<std::mutex> lk(mutex_);
+        cond_.wait(lk);
+        return 0;
+    }
 };
 
 #endif

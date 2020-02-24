@@ -15,9 +15,10 @@ class source: public Filter, public common::data::Consumer
 {
 public:
     source(common::Logger logger, common::data::Handler * data_handler, common::data::type type):
-        Log(logger), Filter(logger), common::data::Consumer(logger, data_handler), type_(type)
+        Log(logger), Filter(logger, "source"),
+        common::data::Consumer(logger, data_handler), type_(type)
     {
-        ready_ = true;
+        source_ = true;
     }
 
     ~source() {}
@@ -41,6 +42,10 @@ public:
 
         ret = pop_chunk(type_, chunk_size.n_rows, data);
         common_die_zero(logger_, ret, -1, "source {} failed to pop chunk", this->name_);
+
+        if (ret == 0) {
+            return 0;
+        }
 
         auto chunk = std::make_shared<Chunk<T2>>(logger_, chunk_size);
 

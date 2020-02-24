@@ -44,6 +44,8 @@ public:
     void set_ready()      {ready_ = true;}
     void reset_ready()    {ready_ = false;}
 
+    bool is_source() const {return source_;}
+
     void set_verbose()    {verbose_ = true;}
     void update_stats(std::chrono::duration<double>& duration)
     {
@@ -76,6 +78,7 @@ protected:
 
     bool ready_   = false;
     bool verbose_ = false;
+    bool source_  = false;
 
 private:
     struct stats
