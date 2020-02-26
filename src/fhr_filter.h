@@ -1,7 +1,6 @@
 #ifndef FHR_FILTER_H
 #define FHR_FILTER_H
 
-#include "chunk.h"
 #include "link.h"
 #include "filter.h"
 #include "correlate.h"
@@ -28,17 +27,21 @@ public:
     {
         log_debug(logger_, "fhr filter {} activated", this->name_);
 
-        auto in_chunk = std::make_shared<Chunk<T1>>(logger_);
-        auto input    = dynamic_cast<Link<T1>*>(inputs_.at(0));
-        if (!input->pop(in_chunk)) {
-            return 0;
-        }
+        auto input = dynamic_cast<Link<T1>*>(inputs_.at(0));
+        if (input->empty()) return 0;
+
+        int ret;
+        auto in_chunk = std::make_shared<Chunk<T1>>();
+        ret = input->front(in_chunk);
+        common_die_zero(logger_, ret, -1, "failed to get front");
+        ret = input->pop();
+        common_die_zero(logger_, ret, -2, "failed to pop link");
 
         auto in_size = arma::size(*in_chunk);
 
         arma::SizeCube out_size(in_size.n_cols, in_size.n_slices, 1);
-        auto out0_chunk = std::make_shared<Chunk<T2>>(logger_, out_size);
-        auto out1_chunk = std::make_shared<Chunk<T3>>(logger_, out_size);
+        auto out0_chunk = std::make_shared<Chunk<T2>>(out_size);
+        auto out1_chunk = std::make_shared<Chunk<T3>>(out_size);
 
         for (uint k = 0; k < in_size.n_slices; k++) {
             for (uint j = 0; j < in_size.n_cols; j++) {
@@ -82,13 +85,15 @@ public:
         auto output1 = dynamic_cast<Link<T3>*>(outputs_.at(1));
         output0->push(out0_chunk);
         output1->push(out1_chunk);
-        return 0;
+        return 1;
     }
 
 private:
     arma::uword  radius_;
     T3           threshold_;
     period_range period_range_;
+    arma::uword  fdskip_;
+    arma::uword  fdperseg_;
 };
 
 } /* namespace filter */

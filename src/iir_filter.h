@@ -8,7 +8,6 @@
 #include "common/log.h"
 
 #include "filter.h"
-#include "chunk.h"
 #include "link.h"
 
 namespace filter
@@ -39,14 +38,18 @@ public:
     {
         log_debug(logger_, "iir filter {} activated", this->name_);
 
-        auto in_chunk = std::make_shared<Chunk<T>>(logger_);
-        auto input    = dynamic_cast<Link<T>*>(inputs_.at(0));
-        if (!input->pop(in_chunk)) {
-            return 0;
-        }
+        auto input = dynamic_cast<Link<T>*>(inputs_.at(0));
+        if (input->empty()) return 0;
+
+        int ret;
+        auto in_chunk = std::make_shared<Chunk<T>>();
+        ret = input->front(in_chunk);
+        common_die_zero(logger_, ret, -1, "failed to get front");
+        ret = input->pop();
+        common_die_zero(logger_, ret, -2, "failed to pop link");
+
         auto size = arma::size(*in_chunk);
-        auto out_chunk = std::make_shared<Chunk<T>>(logger_, size);
-        out_chunk->zeros();
+        auto out_chunk = std::make_shared<Chunk<T>>(size, arma::fill::zeros);
         uint n = 0;
         for (uint k = 0; k < size.n_slices; k++) {
             for (uint j = 0; j < size.n_cols; j++) {
@@ -66,12 +69,11 @@ public:
 
         auto output = dynamic_cast<Link<T>*>(outputs_.at(0));
         output->push(out_chunk);
-        return 0;
+        return 1;
     }
 
 private:
     std::vector<sp::IIR_filt<T, double, T>> filters_;
-
 };
 
 } /* namespace filter */

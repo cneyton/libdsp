@@ -2,12 +2,17 @@
 #define LINK_H
 
 #include <memory>
-#include <queue>
+#include <deque>
+#include <algorithm>
+
+#include <armadillo>
 
 #include "common/log.h"
 
 #include "filter.h"
-#include "chunk.h"
+
+template<typename T>
+using Chunk = arma::Cube<T>;
 
 class LinkInterface: public common::Log
 {
@@ -40,32 +45,69 @@ template<typename T>
 class Link : public LinkInterface
 {
 public:
-    Link(common::Logger logger, Filter * src, Filter * dst):
-        LinkInterface(logger, src, dst), chunk_queue_()
+
+    using elem_type = std::shared_ptr<Chunk<T>>;
+
+    Link(common::Logger logger): LinkInterface(logger, nullptr, nullptr) {}
+
+    Link(common::Logger logger, Filter * src, Filter * dst): LinkInterface(logger, src, dst)
     {
         link(src, dst);
     }
 
     virtual ~Link() {}
 
-    int push(std::shared_ptr<Chunk<T>> chunk)
+    int push(elem_type chunk)
     {
-        chunk_queue_.emplace(chunk);
+        /* TODO: check chunk size <25-02-20, cneyton> */
+        chunk_queue_.emplace_back(chunk);
+        common_die_null(logger_, dst_, -1, "dst nullptr");
         dst_->set_ready();
         return 0;
     }
 
-    int pop(std::shared_ptr<Chunk<T>>& chunk)
+    int front(elem_type& chunk) const
     {
         if (chunk_queue_.empty())
-            return 0;
+            return -1;
         chunk = chunk_queue_.front();
-        chunk_queue_.pop();
-        return 1;
+        return 0;
     }
 
+    int pop()
+    {
+        if (chunk_queue_.empty())
+            return -1;
+        chunk_queue_.pop_front();
+        return 0;
+    }
+
+    int head(std::vector<elem_type>& head, const arma::uword n) const
+    {
+        if (chunk_queue_.size() < n)
+            return -1;
+
+        head.clear();
+        head.reserve(n);
+        std::for_each(chunk_queue_.cbegin(), chunk_queue_.cbegin() + n,
+                      [&](auto& chunk){head.push_back(chunk);});
+        return 0;
+    }
+
+    int pop_head(const arma::uword n)
+    {
+        if (chunk_queue_.size() < n)
+            return -1;
+
+        for (arma::uword i = 0; i < n; ++i)
+            chunk_queue_.pop_front();
+    }
+
+    arma::uword  size() const {return chunk_queue_.size();}
+    bool        empty() const {return chunk_queue_.empty();}
+
 private:
-    std::queue<std::shared_ptr<Chunk<T>>> chunk_queue_;
+    std::deque<elem_type> chunk_queue_;
 };
 
 #endif /* LINK_H */

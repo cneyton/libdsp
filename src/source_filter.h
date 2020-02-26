@@ -4,7 +4,6 @@
 #include "common/log.h"
 #include "common/data.h"
 #include "filter.h"
-#include "chunk.h"
 #include "link.h"
 
 namespace filter
@@ -38,16 +37,14 @@ public:
         int ret;
         std::vector<common::data::ByteBuffer> data;
 
-        auto chunk_size = arma::SizeCube(nb_frames_, nb_samples_, nb_slots_);
-
-        ret = pop_chunk(type_, chunk_size.n_rows, data);
+        ret = pop_chunk(type_, nb_frames_, data);
         common_die_zero(logger_, ret, -1, "source {} failed to pop chunk", this->name_);
 
         if (ret == 0) {
             return 0;
         }
 
-        auto chunk = std::make_shared<Chunk<T2>>(logger_, chunk_size);
+        auto chunk = std::make_shared<Chunk<T2>>(nb_frames_, nb_samples_, nb_slots_);
 
         uint16_t i = 0;
         for(auto& buf: data)

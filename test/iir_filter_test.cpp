@@ -66,7 +66,8 @@ int main()
     Handler data_handler(logger, &pipeline);
     common::data::Producer producer(logger, &data_handler);
 
-    auto source_filter = new filter::source<iT, oT>(logger, &data_handler, common::data::type::us);
+    auto source_filter = new filter::source<iT, oT>(logger, &data_handler,
+                                                    common::data::type::us);
     source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
 

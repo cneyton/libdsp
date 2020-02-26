@@ -1,11 +1,12 @@
 set(files
+    correlate_test.cpp
+    peaks_test.cpp
+    interp_test.cpp
+    link_test.cpp
     source_filter_test.cpp
     iir_filter_test.cpp
     #fft_filter_test.cpp
     fd_filter_test.cpp
-    correlate_test.cpp
-    peaks_test.cpp
-    interp_test.cpp
     fhr_filter_test.cpp
     )
 

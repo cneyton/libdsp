@@ -4,7 +4,6 @@
 #include "common/log.h"
 #include "sigpack.h"
 #include "filter.h"
-#include "chunk.h"
 #include "link.h"
 
 namespace filter
