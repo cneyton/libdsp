@@ -47,7 +47,6 @@ public:
     {
         {
             std::unique_lock<std::mutex> lk(mutex_);
-            // reactivate the sources
             for (auto& filter: filters_)
                 if (filter->is_source())
                     filter->set_ready();
@@ -101,9 +100,11 @@ private:
                                 "failed to activate filter {}", filter->get_name());
                 filter->reset_ready();
 #ifdef DSP_PROFILE
-                auto stop = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> diff = stop - start;
-                filter->update_stats(diff);
+                if (ret) {
+                    auto stop = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double> diff = stop - start;
+                    filter->update_stats(diff);
+                }
 #endif
                 return 1;
             }
