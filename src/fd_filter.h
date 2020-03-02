@@ -38,12 +38,13 @@ public:
         ret = input->pop();
         common_die_zero(logger_, ret, -2, "failed to pop link");
 
+        Chunk<T1> sub_chunk = in_chunk->rows(0, window_.n_elem - 1);
         auto size = arma::size(*in_chunk);
         auto out_chunk = std::make_shared<Chunk<T2>>(arma::size(1, size.n_cols, size.n_slices));
 
         for (uint k = 0; k < size.n_slices; k++) {
             for (uint j = 0; j < size.n_cols; j++) {
-                arma::Col<T1> in = in_chunk->slice(k).col(j);
+                arma::Col<T1> in = sub_chunk.slice(k).col(j);
                 fftw_.fft_cx(in, in);
                 arma::Col<T2> psd = arma::square(arma::abs(in));
                 arma::Col<T2> w   = arma::regspace<arma::Col<T2>>(0, nfft_-1)
