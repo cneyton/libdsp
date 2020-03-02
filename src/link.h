@@ -1,6 +1,7 @@
 #ifndef LINK_H
 #define LINK_H
 
+#include <string>
 #include <memory>
 #include <deque>
 #include <algorithm>
@@ -14,18 +15,16 @@
 template<typename T>
 using Chunk = arma::Cube<T>;
 
+
 class LinkInterface: public common::Log
 {
 public:
-    LinkInterface(common::Logger logger, Filter * src, Filter * dst):
-        Log(logger), src_(src), dst_(dst) {}
+    LinkInterface(common::Logger logger, Filter * src, Filter * dst, arma::SizeCube& format):
+        Log(logger), src_(src), dst_(dst), format_(format) {}
     virtual ~LinkInterface() {}
 
     int link(Filter * src, Filter * dst)
     {
-        src_ = src;
-        dst_ = dst;
-
         int ret;
         ret = src->add_output(*this);
         common_die_zero(logger_, ret, -1, "failed to add link to src");
@@ -37,8 +36,17 @@ public:
     }
 
 protected:
-    Filter * src_ = nullptr;
-    Filter * dst_ = nullptr;
+    Filter * const src_;
+    Filter * const dst_;
+    const arma::SizeCube  format_;
+};
+
+template<typename T>
+struct Pad
+{
+    using type = T;
+    std::string     name;
+    //arma::SizeCube  format;
 };
 
 template<typename T>
@@ -48,9 +56,11 @@ public:
 
     using elem_type = std::shared_ptr<Chunk<T>>;
 
-    Link(common::Logger logger): LinkInterface(logger, nullptr, nullptr) {}
+    Link(common::Logger logger, arma::SizeCube& format):
+        LinkInterface(logger, nullptr, nullptr, format) {}
 
-    Link(common::Logger logger, Filter * src, Filter * dst): LinkInterface(logger, src, dst)
+    Link(common::Logger logger, Filter * src, Filter * dst, arma::SizeCube& format):
+        LinkInterface(logger, src, dst, format)
     {
         link(src, dst);
     }
@@ -59,8 +69,11 @@ public:
 
     int push(elem_type chunk)
     {
-        /* TODO: check chunk size <25-02-20, cneyton> */
+        if (arma::size(*chunk) != format_)
+            common_die(logger_, -1, "invalid chunk format");
+
         chunk_queue_.emplace_back(chunk);
+
         common_die_null(logger_, dst_, -1, "dst nullptr");
         dst_->set_ready();
         return 0;
@@ -82,15 +95,15 @@ public:
         return 0;
     }
 
-    int head(std::vector<elem_type>& head, const arma::uword n) const
+    int head(std::vector<elem_type>& frames, const arma::uword n) const
     {
         if (chunk_queue_.size() < n)
             return -1;
 
-        head.clear();
-        head.reserve(n);
+        frames.clear();
+        frames.reserve(n);
         std::for_each(chunk_queue_.cbegin(), chunk_queue_.cbegin() + n,
-                      [&](auto& chunk){head.push_back(chunk);});
+                      [&](auto& chunk){frames.push_back(chunk);});
         return 0;
     }
 
@@ -101,13 +114,35 @@ public:
 
         for (arma::uword i = 0; i < n; ++i)
             chunk_queue_.pop_front();
+
+        return 0;
+    }
+
+    Chunk<T> head_chunk(const arma::uword n) const
+    {
+        auto chunk  = arma::Cube<T>(n, format_.n_cols, format_.n_slices);
+        auto frames = std::vector<elem_type>();
+        head(frames, n);
+
+        for (arma::uword i = 0; i < n; ++i) {
+            for (arma::uword j = 0; j < format_.n_cols; ++j) {
+                for (arma::uword k = 0; k < format_.n_slices; ++k) {
+                    chunk(i, j, k) = frames[i]->operator()(0, j, k);
+                }
+            }
+        }
+        return chunk;
     }
 
     arma::uword  size() const {return chunk_queue_.size();}
     bool        empty() const {return chunk_queue_.empty();}
 
+    const arma::SizeCube& get_format()  const {return format_;}
+
 private:
     std::deque<elem_type> chunk_queue_;
+    //Pad<T> * src_pad_ = nullptr;
+    //Pad<T> * dst_pad_ = nullptr;
 };
 
 #endif /* LINK_H */

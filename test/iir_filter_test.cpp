@@ -79,11 +79,12 @@ int main()
     b << 1.7 << 2.8 << 3.6 << arma::endr;
     a << 1.0 << 5.4 << 1.4 << arma::endr;
 
-    auto iir_filter = new filter::iir<oT>(logger, nb_slots * nb_samples, b, a);
+    auto iir_filter = new filter::iir<oT, double>(logger, nb_slots * nb_samples, b, a);
     pipeline.add_filter(std::unique_ptr<Filter>(iir_filter));
 
-    pipeline.link<oT>(source_filter, iir_filter);
-    pipeline.link<oT>(iir_filter, sink_filter);
+    arma::SizeCube format(nb_frames, nb_samples, nb_slots);
+    pipeline.link<oT>(source_filter, iir_filter, format);
+    pipeline.link<oT>(iir_filter, sink_filter, format);
 
     data_handler.reinit_queue(common::data::type::us, elt_size, 100);
 

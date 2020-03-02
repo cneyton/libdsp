@@ -58,6 +58,7 @@ public:
 
     int add_filter(std::unique_ptr<Filter> filter)
     {
+        filter->set_pipeline(this);
         filters_.push_back(std::move(filter));
         return 0;
     }
@@ -73,9 +74,25 @@ public:
     }
 
     template<typename T>
-    int link(Filter * src, Filter * dst)
+    int link(Filter * src, Filter * dst, arma::SizeCube& format)
     {
-        links_.push_back(std::make_unique<Link<T>>(logger_, src, dst));
+        common_die_null(logger_, src, -1, "src nullptr");
+        common_die_null(logger_, dst, -2, "dst nullptr");
+
+        if (src->get_pipeline() != this || dst->get_pipeline() != this)
+            common_die(logger_, -3, "src or dst are not part of the pipeline");
+
+        //if (src_pad_nb >= src->get_nb_input_pads() ||
+            //dst_pad_nb >= dst->get_nb_output_pads())
+            //common_die(logger_, -3, "invalid pad number");
+
+        // compare format
+        //auto src_pad = src->get_pad(src_pad_nb);
+        //auto dst_pad = dst->get_pad(dst_pad_nb);
+
+        // link
+        auto link = std::make_unique<Link<T>>(logger_, src, dst, format);
+        links_.push_back(std::move(link));
         return 0;
     }
 

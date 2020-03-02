@@ -48,6 +48,15 @@ public:
 
     bool is_source() const {return source_;}
 
+    std::string get_name() const {return name_;}
+
+    Pipeline * get_pipeline() const {return pipeline_;}
+    void       set_pipeline(Pipeline * p) {pipeline_ = p;}
+
+    //uint get_nb_input_pads()  const {return input_pads_.size();}
+    //uint get_nb_output_pads() const {return output_pads.size();}
+
+    // debug methods -----------------------------------------------------------
     void set_verbose()    {verbose_ = true;}
     void update_stats(std::chrono::duration<double>& duration)
     {
@@ -68,8 +77,8 @@ public:
         if (stats_.n_execs == 0) return std::chrono::duration<double>::zero();
         else return tot/stats_.n_execs;
     }
+    // -------------------------------------------------------------------------
 
-    std::string get_name() const {return name_;}
 
 protected:
     std::string name_;
@@ -77,6 +86,8 @@ protected:
     Pipeline * pipeline_;
     std::vector<LinkInterface*> inputs_;
     std::vector<LinkInterface*> outputs_;
+    //std::vector<Pad>            input_pads_;
+    //std::vector<Pad>            output_pads;
 
     bool ready_   = false;
     bool verbose_ = false;

@@ -59,7 +59,7 @@ public:
 
         Link<T2> * output = dynamic_cast<Link<T2>*>(outputs_.at(0));
         output->push(chunk);
-        return 0;
+        return 1;
     }
 
 private:

@@ -14,8 +14,6 @@ template<typename T1 = double, typename T2 = double, typename T3 = T2>
 class fhr: public Filter
 {
 public:
-    fhr(common::Logger logger): Log(logger), Filter(logger, "fhr") {}
-    virtual ~fhr() {}
 
     struct period_range
     {
@@ -23,29 +21,34 @@ public:
         T3 max;
     };
 
+    fhr(common::Logger logger, arma::uword fdperseg, arma::uword fdskip, period_range range):
+        Log(logger), Filter(logger, "fhr"), fdperseg_(fdperseg), fdskip_(fdskip),
+        period_range_(range)
+    {
+    }
+    virtual ~fhr() {}
+
+
     virtual int activate()
     {
         log_debug(logger_, "fhr filter {} activated", this->name_);
 
         auto input = dynamic_cast<Link<T1>*>(inputs_.at(0));
-        if (input->empty()) return 0;
+        if (input->size() < fdperseg_) return 0;
 
         int ret;
-        auto in_chunk = std::make_shared<Chunk<T1>>();
-        ret = input->front(in_chunk);
-        common_die_zero(logger_, ret, -1, "failed to get front");
-        ret = input->pop();
-        common_die_zero(logger_, ret, -2, "failed to pop link");
+        auto in_chunk = input->head_chunk(fdperseg_);
+        ret = input->pop_head(fdskip_);
+        common_die_zero(logger_, ret, -1, "failed to pop head");
 
-        auto in_size = arma::size(*in_chunk);
-
-        arma::SizeCube out_size(in_size.n_cols, in_size.n_slices, 1);
+        arma::SizeCube in_size = arma::size(in_chunk);
+        arma::SizeCube out_size(input->get_format());
         auto out0_chunk = std::make_shared<Chunk<T2>>(out_size);
         auto out1_chunk = std::make_shared<Chunk<T3>>(out_size);
 
         for (uint k = 0; k < in_size.n_slices; k++) {
             for (uint j = 0; j < in_size.n_cols; j++) {
-                auto in_ptr  = in_chunk->slice_colptr(k, j);
+                auto in_ptr  = in_chunk.slice_colptr(k, j);
                 arma::Col<T1> in(in_ptr, in_size.n_rows, false, true);
 
                 auto xcorr = correlate::xcorr(in, correlate::scale::unbiased);
@@ -76,8 +79,8 @@ public:
                     corrcoef = ymax / xcorr[0];
                 }
 
-                (*out0_chunk)(j, k, 0) = fhr;
-                (*out1_chunk)(j, k, 0) = corrcoef;
+                (*out0_chunk)(0, j, k) = fhr;
+                (*out1_chunk)(0, j, k) = corrcoef;
             }
         }
 
@@ -91,9 +94,9 @@ public:
 private:
     arma::uword  radius_;
     T3           threshold_;
-    period_range period_range_;
-    arma::uword  fdskip_;
     arma::uword  fdperseg_;
+    arma::uword  fdskip_;
+    period_range period_range_;
 };
 
 } /* namespace filter */

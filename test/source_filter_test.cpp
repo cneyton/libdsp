@@ -67,6 +67,7 @@ int main()
     Handler data_handler(logger, &pipeline);
     common::data::Producer producer(logger, &data_handler);
 
+    auto format = arma::SizeCube(nb_frames, nb_samples, nb_slots);
     auto source_filter = new filter::source<iT, oT>(logger, &data_handler, common::data::type::us);
     source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
@@ -74,7 +75,7 @@ int main()
     auto sink_filter = new filter::sink<oT>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
-    pipeline.link<oT>(source_filter, sink_filter);
+    pipeline.link<oT>(source_filter, sink_filter, format);
 
     data_handler.reinit_queue(common::data::type::us, elt_size, 100);
 

@@ -18,9 +18,14 @@ using oT = double;
 
 constexpr uint16_t nb_samples = 36;
 constexpr uint16_t nb_slots   = 7;
-constexpr uint16_t nb_frames  = 30;
+constexpr uint16_t nb_frames  = 1;
 constexpr size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
 constexpr uint     nb_tot_frames = 10000;
+
+// fhr filter params
+constexpr arma::uword fdperseg = 100;
+constexpr arma::uword fdskip   = 5;
+constexpr filter::fhr<oT, oT, oT>::period_range range{0.0, 5.0};
 
 class Handler: public common::data::Handler
 {
@@ -48,7 +53,7 @@ void producer_th_func(common::data::Producer& p)
         std::transform(buf.begin(), buf.end(), buf.begin(),
                        [&](int x){return x * static_cast<uint8_t>(dist(rd));});
         p.push(common::data::type::oxy, buf);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
     }
 }
 
@@ -75,12 +80,13 @@ int main()
     auto sink_filter_1 = new filter::sink<oT>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
 
-    auto fhr_filter = new filter::fhr<oT, oT, oT>(logger);
+    auto fhr_filter = new filter::fhr<oT, oT, oT>(logger, fdperseg, fdskip, range);
     pipeline.add_filter(std::unique_ptr<Filter>(fhr_filter));
 
-    pipeline.link<oT>(source_filter, fhr_filter);
-    pipeline.link<oT>(fhr_filter, sink_filter_0);
-    pipeline.link<oT>(fhr_filter, sink_filter_1);
+    arma::SizeCube format(nb_frames, nb_samples, nb_slots);
+    pipeline.link<oT>(source_filter, fhr_filter, format);
+    pipeline.link<oT>(fhr_filter, sink_filter_0, format);
+    pipeline.link<oT>(fhr_filter, sink_filter_1, format);
 
     data_handler.reinit_queue(common::data::type::oxy, elt_size, 1000);
 
