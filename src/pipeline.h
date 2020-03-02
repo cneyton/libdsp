@@ -66,10 +66,10 @@ public:
     void print_stats()
     {
         for (auto& f: filters_) {
-            std::cout << "filter " << f->get_name() << std::endl;
-            std::cout << "   n_execs: " << f->get_n_execs() << std::endl;
-            std::cout << "   mean exec time: "
-                << f->get_mean_exec_time().count() << "s" << std::endl;
+            std::cout << "filter " << f->get_name() << "\n"
+                      << "   n_execs: " << f->get_n_execs() << "\n"
+                      << "   tot exec time: " << f->get_tot_exec_time().count() << " s\n"
+                      << "   mean exec time: " << f->get_mean_exec_time().count() << " s\n";
         }
     }
 

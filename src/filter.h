@@ -69,13 +69,15 @@ public:
         stats_.durations.clear();
     }
     arma::uword get_n_execs() const {return stats_.n_execs;}
+    std::chrono::duration<double> get_tot_exec_time() const
+    {
+        return std::accumulate(stats_.durations.begin(), stats_.durations.end(),
+                            std::chrono::duration<double>::zero());
+    }
     std::chrono::duration<double> get_mean_exec_time() const
     {
-        std::chrono::duration<double> tot =
-            std::accumulate(stats_.durations.begin(), stats_.durations.end(),
-                            std::chrono::duration<double>::zero());
         if (stats_.n_execs == 0) return std::chrono::duration<double>::zero();
-        else return tot/stats_.n_execs;
+        else return get_tot_exec_time()/stats_.n_execs;
     }
     // -------------------------------------------------------------------------
 
