@@ -20,11 +20,11 @@ constexpr uint16_t nb_samples = 36;
 constexpr uint16_t nb_slots   = 7;
 constexpr uint16_t nb_frames  = 1;
 constexpr size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
-constexpr uint     nb_tot_frames = 10000;
+constexpr uint     nb_tot_frames = 1000;
 
 // fhr filter params
-constexpr arma::uword fdperseg = 100;
-constexpr arma::uword fdskip   = 5;
+constexpr arma::uword fdperseg = 133;
+constexpr arma::uword fdskip   = 8;
 constexpr filter::fhr<oT, oT, oT>::period_range range{0.0, 5.0};
 
 class Handler: public common::data::Handler

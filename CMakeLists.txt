@@ -32,6 +32,5 @@ endif()
 # Tests
 include(CTest)
 if(DSP_RUNTESTS)
-    enable_testing()
     add_subdirectory(test)
 endif()

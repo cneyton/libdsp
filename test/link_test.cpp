@@ -18,10 +18,8 @@ int main()
     }
 
     auto out_chunk = link.head_chunk(5);
-    out_chunk.print();
     link.pop_head(2);
     out_chunk = link.head_chunk(5);
-    out_chunk.print();
 
     return 0;
 }

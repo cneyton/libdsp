@@ -18,7 +18,6 @@ using oT = arma::cx_double;
 
 constexpr uint16_t nb_samples = 36;
 constexpr uint16_t nb_slots   = 7;
-constexpr uint16_t nb_frames  = 30;
 constexpr size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
 constexpr uint     nb_tot_frames = 10000;
 
@@ -68,16 +67,16 @@ int main()
     Handler data_handler(logger, &pipeline);
     common::data::Producer producer(logger, &data_handler);
 
-    auto format = arma::SizeCube(nb_frames, nb_samples, nb_slots);
+    auto format = arma::SizeCube(nfft, nb_samples, nb_slots);
     auto source_filter = new filter::source<iT, oT>(logger, &data_handler, common::data::type::us);
-    source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
+    source_filter->set_chunk_size(nfft, nb_samples, nb_slots);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
 
     auto sink_filter = new filter::sink<double>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
     auto format_out = arma::SizeCube(1, nb_samples, nb_slots);
-    auto fd_filter = new filter::fd<oT, double>(logger, nfft, arma::vec(nb_frames, arma::fill::ones));
+    auto fd_filter = new filter::fd<oT, double>(logger, nfft, arma::vec(nfft, arma::fill::ones));
     pipeline.add_filter(std::unique_ptr<Filter>(fd_filter));
 
     pipeline.link<oT>(source_filter, fd_filter, format);
