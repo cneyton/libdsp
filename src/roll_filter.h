@@ -13,7 +13,8 @@ class roll: public Filter
 {
 public:
     roll(common::Logger logger, arma::SizeCube& format, arma::uword nskip):
-        Log(logger), Filter(logger, "roll"), internal_chunk_(format), nskip_(nskip)
+        Log(logger), Filter(logger, "roll"),
+        internal_chunk_(std::make_shared<Chunk<T>>(format)), nskip_(nskip)
     {
     }
     virtual ~roll() {}
@@ -32,22 +33,20 @@ public:
         ret = input->pop();
         common_die_zero(logger_, ret, -2, "failed to pop link");
 
-        auto size = arma::size(internal_chunk_);
+        auto size = arma::size(*internal_chunk_);
         for (arma::uword i = 0; i < size.n_slices; ++i) {
-            internal_chunk_.slice(i) = arma::shift(internal_chunk_.slice(i), nskip_);
-            internal_chunk_.slice(i).rows(0, nskip_ - 1) = in_chunk->slice(i);
+            internal_chunk_->slice(i) = arma::shift(internal_chunk_->slice(i), nskip_);
+            internal_chunk_->slice(i).rows(0, nskip_ - 1) = in_chunk->slice(i);
         }
 
-        auto out_chunk = std::make_shared<Chunk<T>>(internal_chunk_);
-
         auto output = dynamic_cast<Link<T>*>(outputs_.at(0));
-        output->push(out_chunk);
+        output->push(internal_chunk_);
 
         return 1;
     }
 
 private:
-    Chunk<T>    internal_chunk_;
+    std::shared_ptr<Chunk<T>>    internal_chunk_;
     arma::uword nskip_;
 };
 
