@@ -74,9 +74,14 @@ public:
                     fhr      = 0;
                     corrcoef = 0;
                 } else {
-                    auto [xmax, ymax] = interp::vertex(xcorr, idx_max);
-                    fhr      = 1/xmax;
-                    corrcoef = ymax / xcorr[0];
+                    try {
+                        auto res = interp::vertex(xcorr, idx_max);
+                        fhr      = 1/res[0];
+                        corrcoef = res[1] / xcorr[0];
+                    } catch (...) {
+                        fhr      = 0;
+                        corrcoef = 0;
+                    }
                 }
 
                 (*out0_chunk)(0, j, k) = fhr;
