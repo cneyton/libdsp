@@ -1,6 +1,7 @@
 #ifndef PEAKS_H
 #define PEAKS_H
 
+#include <stdexcept>
 #include <armadillo>
 
 class peaks
@@ -11,6 +12,9 @@ template<typename T>
 static
 arma::uvec local_peaks(const arma::Col<T>& x, const arma::uword radius)
 {
+    if (x.n_elem < radius)
+        throw std::out_of_range("x size < radius");
+
     arma::uvec peak_inds;
 
     if (radius == 0)
