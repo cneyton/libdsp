@@ -52,7 +52,7 @@ public:
                 arma::Col<T1> in(in_ptr, in_size.n_rows, false, true);
 
                 auto xcorr = correlate::xcorr(in, correlate::scale::unbiased);
-                xcorr = xcorr.subvec(in_size.n_cols - 1, xcorr.n_elem -1);
+                xcorr = xcorr.subvec(in.n_elem - 1, xcorr.n_elem -1);
 
                 auto idx_peaks = peaks::local_peaks(xcorr, radius_);
                 /* TODO: add threshold <20-02-20, cneyton> */
