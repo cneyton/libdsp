@@ -12,8 +12,11 @@ template<typename T>
 static
 arma::uvec local_peaks(const arma::Col<T>& x, const arma::uword radius)
 {
-    if (x.n_elem < radius)
-        throw std::out_of_range("x size < radius");
+    if (x.n_elem < radius) {
+        std::ostringstream os;
+        os << "vec size < radius : " << x.n_elem << "<" << radius;
+        throw std::out_of_range(os.str());
+    }
 
     arma::uvec peak_inds;
 
