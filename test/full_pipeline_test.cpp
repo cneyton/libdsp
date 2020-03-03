@@ -30,6 +30,7 @@ constexpr arma::uword nperseg  = 128;
 constexpr arma::uword nskip    = 30;
 constexpr arma::uword fdperseg = 133;
 constexpr arma::uword fdskip   = 8;
+constexpr arma::uword radius   = 7;
 
 
 class Handler: public common::data::Handler
@@ -99,7 +100,7 @@ int main()
     pipeline.add_filter(std::unique_ptr<Filter>(fd_filter));
 
     filter::fhr<double, double, double>::period_range range{0.0, 5.0};
-    auto fhr_filter = new filter::fhr<double, double, double>(logger, fdperseg, fdskip, range);
+    auto fhr_filter = new filter::fhr<double, double, double>(logger, fdperseg, fdskip, radius, range);
     pipeline.add_filter(std::unique_ptr<Filter>(fhr_filter));
 
     auto sink_filter_0 = new filter::sink<double>(logger);

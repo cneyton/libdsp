@@ -21,8 +21,9 @@ public:
         T3 max;
     };
 
-    fhr(common::Logger logger, arma::uword fdperseg, arma::uword fdskip, period_range range):
-        Log(logger), Filter(logger, "fhr"), fdperseg_(fdperseg), fdskip_(fdskip),
+    fhr(common::Logger logger, arma::uword fdperseg, arma::uword fdskip,
+        arma::uword radius, period_range range):
+        Log(logger), Filter(logger, "fhr"), radius_(radius), fdperseg_(fdperseg), fdskip_(fdskip),
         period_range_(range)
     {
     }

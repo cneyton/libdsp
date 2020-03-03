@@ -23,6 +23,7 @@ constexpr size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
 constexpr uint     nb_tot_frames = 1000;
 
 // fhr filter params
+constexpr arma::uword radius   = 7;
 constexpr arma::uword fdperseg = 133;
 constexpr arma::uword fdskip   = 8;
 constexpr filter::fhr<oT, oT, oT>::period_range range{0.0, 5.0};
@@ -80,7 +81,7 @@ int main()
     auto sink_filter_1 = new filter::sink<oT>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
 
-    auto fhr_filter = new filter::fhr<oT, oT, oT>(logger, fdperseg, fdskip, range);
+    auto fhr_filter = new filter::fhr<oT, oT, oT>(logger, fdperseg, fdskip, radius, range);
     pipeline.add_filter(std::unique_ptr<Filter>(fhr_filter));
 
     arma::SizeCube format(nb_frames, nb_samples, nb_slots);
