@@ -14,7 +14,11 @@
 class Pipeline: public common::Log
 {
 public:
-    Pipeline(common::Logger logger): Log(logger) {}
+    Pipeline(common::Logger logger): Log(logger)
+    {
+        reset_stats();
+    }
+
     virtual ~Pipeline() {}
 
     int run()
@@ -31,7 +35,6 @@ public:
         }
         return 0;
     }
-
 
     int stop()
     {
@@ -55,7 +58,6 @@ public:
         return 0;
     }
 
-
     int add_filter(std::unique_ptr<Filter> filter)
     {
         filter->set_pipeline(this);
@@ -71,6 +73,10 @@ public:
                       << "   tot exec time: " << f->get_tot_exec_time().count() << " s\n"
                       << "   mean exec time: " << f->get_mean_exec_time().count() << " s\n";
         }
+        std::cout << "------------------------------\n"
+                  << "Pipeline\n"
+                  << "   n_execs: " << get_n_execs() << "\n"
+                  << "   tot exec time: " << get_tot_exec_time().count() << " s\n";
     }
 
     template<typename T>
@@ -104,6 +110,30 @@ private:
     std::condition_variable cond_;
     std::mutex              mutex_;
 
+    struct stats
+    {
+        arma::uword n_execs;
+        std::deque<std::chrono::duration<double>> durations;
+    } stats_;
+
+    void update_stats(std::chrono::duration<double>& duration)
+    {
+        stats_.n_execs++;
+        stats_.durations.push_back(duration);
+    }
+    void reset_stats()
+    {
+        stats_.n_execs = 0;
+        stats_.durations.clear();
+    }
+
+    arma::uword get_n_execs() const {return stats_.n_execs;}
+    std::chrono::duration<double> get_tot_exec_time() const
+    {
+        return std::accumulate(stats_.durations.begin(), stats_.durations.end(),
+                            std::chrono::duration<double>::zero());
+    }
+
     int run_once()
     {
         int ret;
@@ -121,6 +151,7 @@ private:
                     auto stop = std::chrono::high_resolution_clock::now();
                     std::chrono::duration<double> diff = stop - start;
                     filter->update_stats(diff);
+                    update_stats(diff);
                 }
 #endif
                 return 1;
