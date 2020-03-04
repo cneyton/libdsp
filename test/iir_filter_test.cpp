@@ -60,6 +60,12 @@ void pipeline_th_func(Pipeline& pipeline)
 
 int main()
 {
+    std::cout << "Input:\n"
+              << "   type: " << typeid(iT).name() << "\n"
+              << "   chunk size: (" << nb_frames << "," << nb_samples << "," << nb_slots << ")\n"
+              << "   nb frames: " << nb_tot_frames << "\n"
+              << "------------------------------\n";
+
     logger->set_level(spdlog::level::info);
 
     Pipeline pipeline(logger);
@@ -81,6 +87,13 @@ int main()
 
     auto iir_filter = new filter::iir<oT, double>(logger, nb_slots * nb_samples, b, a);
     pipeline.add_filter(std::unique_ptr<Filter>(iir_filter));
+
+    std::cout << "Filter params:\n"
+              << "   b:\n ";
+    b.t().print();
+    std::cout << "   a:\n";
+    a.t().print();
+    std::cout << "------------------------------\n";
 
     arma::SizeCube format(nb_frames, nb_samples, nb_slots);
     pipeline.link<oT>(source_filter, iir_filter, format);

@@ -19,3 +19,5 @@ foreach(file ${files})
     target_compile_options(${target_name} PUBLIC -Werror -Wall -Wextra -g -fno-inline)
     add_test(NAME ${target_name} COMMAND ${target_name})
 endforeach()
+
+#add_test(NAME full_pipeline_callgrind COMMAND valgrind --tool=callgrind test/full_pipeline_test)

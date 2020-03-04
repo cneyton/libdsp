@@ -14,7 +14,7 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 common::Logger logger(spdlog::stdout_color_mt("dsp"));
 
-using iT = int16_t;//filter::iq<int16_t>;
+using iT = filter::iq<int16_t>;
 using oT = arma::cx_double;
 
 constexpr uint16_t nb_samples = 36;
@@ -61,6 +61,12 @@ void pipeline_th_func(Pipeline& pipeline)
 /* TODO: we should test different type of input/output <20-02-20, cneyton> */
 int main()
 {
+    std::cout << "Input:\n"
+              << "   type: " << typeid(iT).name() << "\n"
+              << "   chunk size: (" << nb_frames << "," << nb_samples << "," << nb_slots << ")\n"
+              << "   nb frames: " << nb_tot_frames << "\n"
+              << "------------------------------\n";
+
     logger->set_level(spdlog::level::info);
 
     Pipeline pipeline(logger);
@@ -86,6 +92,7 @@ int main()
     pipeline.stop();
     pipeline_th.join();
 
+    // report
     pipeline.print_stats();
 
     return 0;

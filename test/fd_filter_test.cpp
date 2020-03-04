@@ -16,6 +16,7 @@ common::Logger logger(spdlog::stdout_color_mt("dsp"));
 using iT = filter::iq<int16_t>;
 using oT = arma::cx_double;
 
+constexpr uint16_t nb_frames  = 128;
 constexpr uint16_t nb_samples = 36;
 constexpr uint16_t nb_slots   = 7;
 constexpr size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
@@ -61,6 +62,12 @@ void pipeline_th_func(Pipeline& pipeline)
 
 int main()
 {
+    std::cout << "Input:\n"
+              << "   type: " << typeid(iT).name() << "\n"
+              << "   chunk size: (" << nb_frames  << "," << nb_samples << "," << nb_slots << ")\n"
+              << "   nb frames: " << nb_tot_frames << "\n"
+              << "------------------------------\n";
+
     logger->set_level(spdlog::level::info);
 
     Pipeline pipeline(logger);
@@ -78,6 +85,10 @@ int main()
     auto format_out = arma::SizeCube(1, nb_samples, nb_slots);
     auto fd_filter = new filter::fd<oT, double>(logger, nfft, arma::vec(nfft, arma::fill::ones));
     pipeline.add_filter(std::unique_ptr<Filter>(fd_filter));
+
+    std::cout << "Filter params:\n"
+              << "   nfft: " << nfft << "\n"
+              << "------------------------------\n";
 
     pipeline.link<oT>(source_filter, fd_filter, format);
     pipeline.link<double>(fd_filter, sink_filter, format_out);

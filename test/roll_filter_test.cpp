@@ -85,6 +85,10 @@ int main()
     auto roll_filter = new filter::roll<oT>(logger, format, nskip);
     pipeline.add_filter(std::unique_ptr<Filter>(roll_filter));
 
+    std::cout << "Filter params:\n"
+              << "   nskip: " << nskip << "\n"
+              << "------------------------------\n";
+
     pipeline.link<oT>(source_filter, roll_filter, format_in);
     pipeline.link<oT>(roll_filter, sink_filter, format);
 

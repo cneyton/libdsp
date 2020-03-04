@@ -84,6 +84,13 @@ int main()
     auto fhr_filter = new filter::fhr<oT, oT, oT>(logger, fdperseg, fdskip, radius, range);
     pipeline.add_filter(std::unique_ptr<Filter>(fhr_filter));
 
+    std::cout << "Filter params:\n"
+              << "   fdperseg: " << fdperseg << "\n"
+              << "   fdskip:   " << fdskip   << "\n"
+              << "   radius:   " << radius   << "\n"
+              << "   range:    (" << range.min << "," << range.max <<  ")\n"
+              << "------------------------------\n";
+
     arma::SizeCube format(nb_frames, nb_samples, nb_slots);
     pipeline.link<oT>(source_filter, fhr_filter, format);
     pipeline.link<oT>(fhr_filter, sink_filter_0, format);
