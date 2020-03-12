@@ -27,25 +27,25 @@ arma::uvec local_peaks(const arma::Col<T>& x, const arma::uword radius)
     while (i < radius + 1) {
         if (i == arma::index_max(x.subvec(0, i + radius))) {
             peak_inds << i;
-            i += radius;
+            i += radius + 1;
         } else {
             i += 1;
         }
     }
 
     while (i < x.n_elem - radius) {
-        if (i == i - radius + arma::index_max(x.subvec(i - radius, i + radius))) {
+        if (radius == arma::index_max(x.subvec(i - radius, i + radius))) {
             peak_inds << i;
-            i += radius;
+            i += radius + 1;
         } else {
             i += 1;
         }
     }
 
     while (i < x.n_elem) {
-        if (i == i - radius + arma::index_max(x.subvec(i - radius, x.n_elem - 1))) {
+        if (radius == arma::index_max(x.subvec(i - radius, x.n_elem - 1))) {
             peak_inds << i;
-            i += radius;
+            i += radius + 1;
         } else {
             i += 1;
         }
