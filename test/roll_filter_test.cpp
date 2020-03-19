@@ -14,20 +14,18 @@
 common::Logger logger(spdlog::stdout_color_mt("dsp"));
 
 // input params
-using iT = filter::iq<int16_t>;
-using oT = arma::cx_double;
+using iT = double;
+using oT = double;
 
-constexpr uint16_t nb_samples = 36;
+constexpr uint16_t nb_samples = 1;
 constexpr uint16_t nb_slots   = 7;
-constexpr uint16_t nb_frames  = 30;
+constexpr uint16_t nb_frames  = 1;
 constexpr size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
 constexpr uint     nb_tot_frames = 10000;
+constexpr uint     period = 10;
 
-// roll filter params
-constexpr arma::uword nskip    = 30;
-constexpr arma::uword fdperseg = 133;
-constexpr arma::uword nperseg  = 128;
-
+// Filter params
+constexpr uint16_t nb_frames_out  = 128;
 
 class Handler: public common::data::Handler
 {
@@ -55,7 +53,7 @@ void producer_th_func(common::data::Producer& p)
         std::transform(buf.begin(), buf.end(), buf.begin(),
                        [&](int x){return x * static_cast<uint8_t>(dist(rd));});
         p.push(common::data::type::us, buf);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(period));
     }
 }
 
@@ -77,20 +75,18 @@ int main()
     source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
 
+    arma::SizeCube format_out = arma::SizeCube(nb_frames_out, nb_samples, nb_slots);
     auto sink_filter = new filter::sink<oT>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
-    arma::SizeCube format = arma::SizeCube(nskip*(fdperseg-1)+nperseg,
-                                           nb_samples, nb_slots);
-    auto roll_filter = new filter::roll<oT>(logger, format, nskip);
+    auto roll_filter = new filter::roll<oT>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(roll_filter));
 
     std::cout << "Filter params:\n"
-              << "   nskip: " << nskip << "\n"
               << "------------------------------\n";
 
     pipeline.link<oT>(source_filter, roll_filter, format_in);
-    pipeline.link<oT>(roll_filter, sink_filter, format);
+    pipeline.link<oT>(roll_filter, sink_filter, format_out);
 
     data_handler.reinit_queue(common::data::type::us, elt_size, 1000);
 
@@ -105,5 +101,3 @@ int main()
 
     return 0;
 }
-
-

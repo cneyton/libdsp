@@ -1,9 +1,11 @@
 #ifndef ROLL_FILTER_H
 #define ROLL_FILTER_H
 
+#include <memory>
+#include <deque>
+
 #include "filter.h"
 #include "link.h"
-#include <memory>
 
 namespace filter
 {
@@ -12,11 +14,7 @@ template<typename T>
 class roll: public Filter
 {
 public:
-    roll(common::Logger logger, arma::SizeCube& format, arma::uword nskip):
-        Log(logger), Filter(logger, "roll"),
-        internal_chunk_(std::make_shared<Chunk<T>>(format)), nskip_(nskip)
-    {
-    }
+    roll(common::Logger logger): Log(logger), Filter(logger, "roll") {}
     virtual ~roll() {}
 
     virtual int activate()
@@ -33,21 +31,36 @@ public:
         ret = input->pop();
         common_die_zero(logger_, ret, -2, "failed to pop link");
 
-        auto size = arma::size(*internal_chunk_);
-        for (arma::uword i = 0; i < size.n_slices; ++i) {
-            internal_chunk_->slice(i) = arma::shift(internal_chunk_->slice(i), nskip_);
-            internal_chunk_->slice(i).rows(0, nskip_ - 1) = in_chunk->slice(i);
+        chunk_queue_.push_back(in_chunk);
+
+        auto output  = dynamic_cast<Link<T>*>(outputs_.at(0));
+        auto in_fmt  = input->get_format();
+        auto out_fmt = output->get_format();
+
+        i_++;
+        if (in_fmt.n_rows * i_ < out_fmt.n_rows)
+            return 0;
+
+        i_ = 0;
+        auto out_chunk = std::make_shared<Chunk<T>>(out_fmt);
+        arma::uword row_start = 0;
+        arma::uword row_end   = 0;
+        for (auto it = chunk_queue_.crbegin(); it < chunk_queue_.crend(); ++it) {
+            row_end += (*it)->n_rows;
+            out_chunk->rows(row_start, row_end - 1) = **it;
+            row_start = row_end;
         }
+        for (arma::uword i = 0; i < out_fmt.n_rows; ++i)
+            chunk_queue_.pop_front();
 
-        auto output = dynamic_cast<Link<T>*>(outputs_.at(0));
-        output->push(internal_chunk_);
-
+        output->push(out_chunk);
         return 1;
     }
 
 private:
-    std::shared_ptr<Chunk<T>>    internal_chunk_;
-    arma::uword nskip_;
+    arma::uword i_ = 0;
+
+    std::deque<std::shared_ptr<Chunk<T>>> chunk_queue_;
 };
 
 } /* namespace filter */

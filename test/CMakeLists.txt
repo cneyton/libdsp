@@ -9,7 +9,9 @@ set(files
     fd_filter_test.cpp
     fhr_filter_test.cpp
     roll_filter_test.cpp
-    full_pipeline_test.cpp
+    tee_filter_test.cpp
+    #full_pipeline_test.cpp
+    #arma_test.cpp
     )
 
 foreach(file ${files})
