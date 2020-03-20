@@ -87,6 +87,11 @@ public:
         return 0;
     }
 
+    elem_type front() const
+    {
+        return chunk_queue_.front();
+    }
+
     int pop()
     {
         if (chunk_queue_.empty())

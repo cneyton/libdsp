@@ -14,18 +14,18 @@
 common::Logger logger(spdlog::stdout_color_mt("dsp"));
 
 // input params
-using iT = double;
+using iT = uint8_t;
 using oT = double;
 
-constexpr uint16_t nb_samples = 1;
-constexpr uint16_t nb_slots   = 7;
-constexpr uint16_t nb_frames  = 1;
+constexpr uint16_t nb_samples = 5;
+constexpr uint16_t nb_slots   = 1;
+constexpr uint16_t nb_frames  = 6;
 constexpr size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
-constexpr uint     nb_tot_frames = 10000;
-constexpr uint     period = 10;
+constexpr uint     nb_tot_frames = 30;
+constexpr uint     period = 1;
 
 // Filter params
-constexpr uint16_t nb_frames_out  = 128;
+constexpr uint16_t nb_frames_out  = 7;
 
 class Handler: public common::data::Handler
 {
@@ -49,9 +49,7 @@ void producer_th_func(common::data::Producer& p)
     std::random_device rd;
     std::uniform_int_distribution dist(0, 254);
     for (uint i = 0; i < nb_tot_frames; i++) {
-        common::data::ByteBuffer buf(elt_size, 1);
-        std::transform(buf.begin(), buf.end(), buf.begin(),
-                       [&](int x){return x * static_cast<uint8_t>(dist(rd));});
+        common::data::ByteBuffer buf(elt_size, i);
         p.push(common::data::type::us, buf);
         std::this_thread::sleep_for(std::chrono::milliseconds(period));
     }
