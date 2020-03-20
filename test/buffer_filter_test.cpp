@@ -5,7 +5,7 @@
 #include "common/log.h"
 #include "common/data.h"
 
-#include "roll_filter.h"
+#include "buffer_filter.h"
 #include "pipeline.h"
 #include "source_filter.h"
 #include "sink_filter.h"
@@ -79,14 +79,14 @@ int main()
     auto sink_filter = new filter::sink<oT>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
-    auto roll_filter = new filter::roll<oT>(logger);
-    pipeline.add_filter(std::unique_ptr<Filter>(roll_filter));
+    auto buffer_filter = new filter::buffer<oT>(logger);
+    pipeline.add_filter(std::unique_ptr<Filter>(buffer_filter));
 
     std::cout << "Filter params:\n"
               << "------------------------------\n";
 
-    pipeline.link<oT>(source_filter, roll_filter, format_in);
-    pipeline.link<oT>(roll_filter, sink_filter, format_out);
+    pipeline.link<oT>(source_filter, buffer_filter, format_in);
+    pipeline.link<oT>(buffer_filter, sink_filter, format_out);
 
     data_handler.reinit_queue(common::data::type::us, elt_size, 1000);
 

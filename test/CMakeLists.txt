@@ -8,7 +8,7 @@ set(files
     #fft_filter_test.cpp
     fd_filter_test.cpp
     fhr_filter_test.cpp
-    roll_filter_test.cpp
+    buffer_filter_test.cpp
     tee_filter_test.cpp
     #full_pipeline_test.cpp
     #arma_test.cpp

@@ -1,5 +1,5 @@
-#ifndef ROLL_FILTER_H
-#define ROLL_FILTER_H
+#ifndef BUFFER_FILTER_H
+#define BUFFER_FILTER_H
 
 #include <memory>
 #include <deque>
@@ -11,11 +11,11 @@ namespace filter
 {
 
 template<typename T>
-class roll: public Filter
+class buffer: public Filter
 {
 public:
-    roll(common::Logger logger): Log(logger), Filter(logger, "roll") {}
-    virtual ~roll() {}
+    buffer(common::Logger logger): Log(logger), Filter(logger, "buffer") {}
+    virtual ~buffer() {}
 
     virtual int activate()
     {
@@ -65,4 +65,4 @@ private:
 
 } /* namespace filter */
 
-#endif /* ROLL_FILTER_H */
+#endif /* BUFFER_FILTER_H */
