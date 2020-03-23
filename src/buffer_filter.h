@@ -22,12 +22,10 @@ public:
         log_debug(logger_, "{} filter activated", this->name_);
 
         auto input = dynamic_cast<Link<T>*>(inputs_.at(0));
-        if (input->empty()) return 0;
 
-        int ret;
+        if (input->empty()) return 0;
         auto chunk_in = input->front();
-        ret = input->pop();
-        common_die_zero(logger_, ret, -2, "failed to pop link");
+        input->pop();
 
         chunk_queue_.push_back(chunk_in);
 
