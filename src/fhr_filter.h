@@ -14,67 +14,63 @@ template<typename T1 = double, typename T2 = double, typename T3 = T2>
 class fhr: public Filter
 {
 public:
-
-    struct period_range
-    {
-        T3 min;
-        T3 max;
-    };
-
-    fhr(common::Logger logger, arma::uword fdperseg, arma::uword fdskip,
-        arma::uword radius, period_range range):
-        Log(logger), Filter(logger, "fhr"), radius_(radius), fdperseg_(fdperseg), fdskip_(fdskip),
-        period_range_(range)
+    fhr(common::Logger logger, arma::uword radius, arma::uword period_max, T3 threshold):
+        Log(logger), Filter(logger, "fhr"), radius_(radius), period_max_(period_max),
+        threshold_(threshold)
     {
     }
     virtual ~fhr() {}
-
 
     virtual int activate()
     {
         log_debug(logger_, "fhr filter {} activated", this->name_);
 
         auto input = dynamic_cast<Link<T1>*>(inputs_.at(0));
-        if (input->size() < fdperseg_) return 0;
+        if (input->empty()) return 0;
 
-        int ret;
-        auto in_chunk = input->head_chunk(fdperseg_);
-        ret = input->pop_head(fdskip_);
-        common_die_zero(logger_, ret, -1, "failed to pop head");
+        auto chunk_in  = input->front();
+        auto fmt_in    = input->get_format();
+        input->pop();
 
-        arma::SizeCube in_size = arma::size(in_chunk);
-        arma::SizeCube out_size(input->get_format());
-        auto out0_chunk = std::make_shared<Chunk<T2>>(out_size);
-        auto out1_chunk = std::make_shared<Chunk<T3>>(out_size);
+        auto output_fhr = dynamic_cast<Link<T2>*>(outputs_.at(0));
+        auto output_cor = dynamic_cast<Link<T3>*>(outputs_.at(1));
+        auto fmt_out    = output_fhr->get_format();
 
-        for (uint k = 0; k < in_size.n_slices; k++) {
-            for (uint j = 0; j < in_size.n_cols; j++) {
-                auto in_ptr  = in_chunk.slice_colptr(k, j);
-                arma::Col<T1> in(in_ptr, in_size.n_rows, false, true);
+        auto chunk_fhr = std::make_shared<Chunk<T2>>(fmt_out);
+        auto chunk_cor = std::make_shared<Chunk<T3>>(fmt_out);
 
-                auto xcorr = correlate::xcorr(in, correlate::scale::unbiased);
-                xcorr = xcorr.subvec(in.n_elem - 1, xcorr.n_elem -1);
+        for (uint k = 0; k < fmt_in.n_slices; k++) {
+            for (uint j = 0; j < fmt_in.n_cols; j++) {
+                auto col_ptr  = chunk_in->slice_colptr(k, j);
+                arma::Col<T1> x(col_ptr, fmt_in.n_rows, false, true);
 
-                auto idx_peaks = peaks::local_peaks(xcorr, radius_);
-                /* TODO: add threshold <20-02-20, cneyton> */
+                auto xcorr = correlate::xcorr(x, correlate::scale::unbiased);
+                xcorr = xcorr.subvec(x.n_elem - 1, xcorr.n_elem -1);
 
-                arma::uword idx_max;
-                bool        idx_set = false;
-                for (arma::uword idx: idx_peaks) {
-                    if (static_cast<T3>(idx) >= period_range_.min ||
-                        static_cast<T3>(idx) <= period_range_.max ) {
-                        idx_max = idx;
-                        idx_set = true;
-                        break;
-                    }
+                arma::Col<T1> xcorr_part = xcorr.subvec(radius_ - 1, xcorr.n_elem - 1);
+                auto idx_peaks = peaks::local_peaks(xcorr_part, radius_);
+                idx_peaks = idx_peaks + radius_ - 1;
+                idx_peaks = idx_peaks(arma::find(idx_peaks <= period_max_));
+
+                arma::uvec odd_idx;
+                arma::uvec even_idx;
+                for (arma::uword& idx: idx_peaks) {
+                    if (idx % 2 == 0) even_idx << idx;
+                    else              odd_idx  << idx;
                 }
 
+                arma::uword idx_max;
                 T2 fhr;
                 T3 corrcoef;
-                if (!idx_set) {
+                if (idx_peaks.n_elem <= 2) {
                     fhr      = 0;
                     corrcoef = 0;
                 } else {
+                    if (arma::mean(xcorr(even_idx)) / arma::mean(xcorr(odd_idx)) < threshold_) {
+                        idx_max = idx_peaks.at(1);
+                    } else {
+                        idx_max = idx_peaks.at(0);
+                    }
                     try {
                         auto res = interp::vertex(xcorr, idx_max);
                         fhr      = 1/res[0];
@@ -83,26 +79,23 @@ public:
                         fhr      = 0;
                         corrcoef = 0;
                     }
-                }
 
-                (*out0_chunk)(0, j, k) = fhr;
-                (*out1_chunk)(0, j, k) = corrcoef;
+                (*chunk_fhr)(0, j, k) = fhr;
+                (*chunk_cor)(0, j, k) = corrcoef;
+                }
             }
         }
 
-        auto output0 = dynamic_cast<Link<T2>*>(outputs_.at(0));
-        auto output1 = dynamic_cast<Link<T3>*>(outputs_.at(1));
-        output0->push(out0_chunk);
-        output1->push(out1_chunk);
+        output_fhr->push(chunk_fhr);
+        output_cor->push(chunk_cor);
+
         return 1;
     }
 
 private:
     arma::uword  radius_;
+    arma::uword  period_max_;
     T3           threshold_;
-    arma::uword  fdperseg_;
-    arma::uword  fdskip_;
-    period_range period_range_;
 };
 
 } /* namespace filter */

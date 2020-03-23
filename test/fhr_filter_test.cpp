@@ -13,20 +13,20 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 common::Logger logger(spdlog::stdout_color_mt("dsp"));
 
-using iT = int16_t;
+using iT = uint8_t;
 using oT = double;
 
 constexpr uint16_t nb_samples = 36;
 constexpr uint16_t nb_slots   = 7;
-constexpr uint16_t nb_frames  = 1;
+constexpr uint16_t nb_frames  = 133;
 constexpr size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
-constexpr uint     nb_tot_frames = 1000;
+constexpr uint     nb_tot_frames = nb_frames * 8;
+constexpr uint     period = 1;
 
 // fhr filter params
-constexpr arma::uword radius   = 7;
-constexpr arma::uword fdperseg = 133;
-constexpr arma::uword fdskip   = 8;
-constexpr filter::fhr<oT, oT, oT>::period_range range{0.0, 5.0};
+constexpr arma::uword radius     = 7;
+constexpr arma::uword period_max = 67;
+constexpr oT threshold = 0.6;
 
 class Handler: public common::data::Handler
 {
@@ -47,14 +47,10 @@ private:
 
 void producer_th_func(common::data::Producer& p)
 {
-    std::random_device rd;
-    std::uniform_int_distribution dist(0, 254);
     for (uint i = 0; i < nb_tot_frames; i++) {
-        common::data::ByteBuffer buf(elt_size, 1);
-        std::transform(buf.begin(), buf.end(), buf.begin(),
-                       [&](int x){return x * static_cast<uint8_t>(dist(rd));});
+        common::data::ByteBuffer buf(elt_size, 0);
         p.push(common::data::type::oxy, buf);
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        std::this_thread::sleep_for(std::chrono::milliseconds(period));
     }
 }
 
@@ -81,20 +77,20 @@ int main()
     auto sink_filter_1 = new filter::sink<oT>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
 
-    auto fhr_filter = new filter::fhr<oT, oT, oT>(logger, fdperseg, fdskip, radius, range);
+    auto fhr_filter = new filter::fhr<oT, oT, oT>(logger, radius, period_max, threshold);
     pipeline.add_filter(std::unique_ptr<Filter>(fhr_filter));
 
     std::cout << "Filter params:\n"
-              << "   fdperseg: " << fdperseg << "\n"
-              << "   fdskip:   " << fdskip   << "\n"
-              << "   radius:   " << radius   << "\n"
-              << "   range:    (" << range.min << "," << range.max <<  ")\n"
+              << "   radius:       " << radius     << "\n"
+              << "   period_max:   " << period_max << "\n"
+              << "   threshold:    " << threshold  << "\n"
               << "------------------------------\n";
 
-    arma::SizeCube format(nb_frames, nb_samples, nb_slots);
-    pipeline.link<oT>(source_filter, fhr_filter, format);
-    pipeline.link<oT>(fhr_filter, sink_filter_0, format);
-    pipeline.link<oT>(fhr_filter, sink_filter_1, format);
+    arma::SizeCube fmt_in(nb_frames, nb_samples, nb_slots);
+    arma::SizeCube fmt_out(1, nb_samples, nb_slots);
+    pipeline.link<oT>(source_filter, fhr_filter, fmt_in);
+    pipeline.link<oT>(fhr_filter, sink_filter_0, fmt_out);
+    pipeline.link<oT>(fhr_filter, sink_filter_1, fmt_out);
 
     data_handler.reinit_queue(common::data::type::oxy, elt_size, 1000);
 
