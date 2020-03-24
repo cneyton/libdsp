@@ -11,6 +11,7 @@ set(files
     buffer_filter_test.cpp
     roll_filter_test.cpp
     tee_filter_test.cpp
+    fhr_block_test.cpp
     #full_pipeline_test.cpp
     #arma_test.cpp
     )
