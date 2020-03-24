@@ -11,7 +11,7 @@ template<typename T>
 class sink: public Filter
 {
 public:
-    sink(common::Logger logger): Log(logger), Filter(logger, "sink") {}
+    sink(common::Logger logger): common::Log(logger), Filter(logger, "sink") {}
     virtual ~sink() {}
 
     virtual int activate()
@@ -31,6 +31,7 @@ public:
             chunk->print();
         return 1;
     }
+private:
 };
 
 } /* namespace filter */
