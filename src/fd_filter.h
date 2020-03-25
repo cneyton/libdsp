@@ -18,50 +18,49 @@ public:
     {
         /* TODO: do this at link  <14-02-20, cneyton> */
         // Create fftw plan by first application of fft
-        arma::Col<T1> vec(nfft);
-        fftw_.fft_cx(vec, vec);
+        in_ = arma::Col<T1>(nfft);
+        fftw_.fft_cx(in_, in_);
     }
 
     virtual ~fd() {}
 
     virtual int activate()
     {
-        log_debug(logger_, "fd filter {} activated", this->name_);
+        log_debug(logger_, "{} filter activated", this->name_);
 
         auto input = dynamic_cast<Link<T1>*>(inputs_.at(0));
         if (input->empty()) return 0;
 
-        int ret;
-        auto in_chunk = std::make_shared<Chunk<T1>>();
-        ret = input->front(in_chunk);
-        common_die_zero(logger_, ret, -1, "failed to get front");
-        ret = input->pop();
-        common_die_zero(logger_, ret, -2, "failed to pop link");
+        auto chunk_in = input->front();
+        input->pop();
 
-        Chunk<T1> sub_chunk = in_chunk->rows(0, window_.n_elem - 1);
-        auto size = arma::size(*in_chunk);
-        auto out_chunk = std::make_shared<Chunk<T2>>(arma::size(1, size.n_cols, size.n_slices));
+        auto output  = dynamic_cast<Link<T2>*>(outputs_.at(0));
+        auto fmt_in  = input->get_format();
+        auto fmt_out = output->get_format();
 
-        for (uint k = 0; k < size.n_slices; k++) {
-            for (uint j = 0; j < size.n_cols; j++) {
-                arma::Col<T1> in = sub_chunk.slice(k).col(j);
-                fftw_.fft_cx(in, in);
-                arma::Col<T2> psd = arma::square(arma::abs(in));
-                arma::Col<T2> w   = arma::regspace<arma::Col<T2>>(0, nfft_-1)
-                    - static_cast<T2>(nfft_)/2;
+        auto chunk_out = std::make_shared<Chunk<T2>>(fmt_out);
+
+        arma::Col<T2> w   = arma::regspace<arma::Col<T2>>(0, nfft_-1) - static_cast<T2>(nfft_)/2;
+        arma::uword shift = nfft_/2;
+        T2 scale          = 1/static_cast<T2>(nfft_);
+        for (arma::uword k = 0; k < fmt_in.n_slices; k++) {
+            for (arma::uword j = 0; j < fmt_in.n_cols; j++) {
+                in_ = chunk_in->slice(k).col(j);
+                fftw_.fft_cx(in_, in_);
+                in_ = arma::shift(in_, shift);
+                arma::Col<T2> psd = arma::square(arma::abs(in_));
                 T2 m0 = arma::sum(psd);
                 T2 m1 = arma::dot(psd, w);
-                (*out_chunk)(0, j, k) = 1/static_cast<T2>(nfft_) * m1/m0;
+                (*chunk_out)(0, j, k) = scale * m1/m0;
             }
         }
 
         if (verbose_) {
-            in_chunk->print();
-            out_chunk->print();
+            chunk_in->print();
+            chunk_out->print();
         }
 
-        auto output = dynamic_cast<Link<T2>*>(outputs_.at(0));
-        output->push(out_chunk);
+        output->push(chunk_out);
 
         return 1;
     }
@@ -70,6 +69,7 @@ private:
     arma::uword nfft_;
     sp::FFTW    fftw_;
     arma::vec   window_;
+    arma::Col<T1>   in_;
 };
 
 } /* namespace filter */
