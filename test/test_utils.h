@@ -36,8 +36,9 @@ class Producer: public common::data::Producer
 {
 public:
     Producer(common::Logger logger, common::data::Handler * h, std::string filename,
-             arma::uword period=1):
-        Log(logger), common::data::Producer(logger, h), filename_(filename), period_(period)
+             arma::uword period=1, arma::uword queue_size=1000):
+        Log(logger), common::data::Producer(logger, h), filename_(filename),
+        period_(period), queue_size_(queue_size)
     {
         cnpy::NpyArray np_array = cnpy::npy_load(filename_);
         arma::uword n_rows   = np_array.shape.at(2);
@@ -52,7 +53,7 @@ public:
     void run()
     {
         size_t row_size = data_.n_cols * data_.n_slices * sizeof(T);
-        get_handler()->reinit_queue(common::data::type::us, row_size, 100);
+        get_handler()->reinit_queue(common::data::type::us, row_size, queue_size_);
         for (arma::uword i = 0; i < data_.n_rows; ++i) {
             arma::Col<T> row = arma::vectorise(data_.row(i));
             uint8_t * memptr = reinterpret_cast<uint8_t*>(row.memptr());
@@ -72,6 +73,7 @@ private:
     std::string   filename_;
     arma::Cube<T> data_;
     arma::uword   period_;
+    arma::uword   queue_size_;
 };
 
 template<typename T>
