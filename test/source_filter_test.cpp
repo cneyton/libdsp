@@ -1,12 +1,10 @@
 #include "test_utils.h"
-#include "source_filter.h"
 
 #include "spdlog/common.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
 using iT = double;
 using oT = double;
-
 
 /* TODO: we should test different type of input/output <20-02-20, cneyton> */
 int main(int argc, char * argv[])
@@ -41,7 +39,7 @@ int main(int argc, char * argv[])
     pipeline.link<oT>(source_filter, sink_filter, fmt_in);
 
     std::thread pipeline_th(&Pipeline::run, &pipeline);
-    std::thread producer_th(&Producer<double>::run, &producer);
+    std::thread producer_th(&Producer<iT>::run, &producer);
 
     producer_th.join();
     pipeline.stop();
@@ -49,7 +47,6 @@ int main(int argc, char * argv[])
 
     sink_filter->dump(filename_out);
 
-    // report
     pipeline.print_stats();
 
     return 0;

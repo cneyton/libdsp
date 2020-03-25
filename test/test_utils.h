@@ -5,6 +5,7 @@
 #include "common/data.h"
 
 #include "pipeline.h"
+#include "source_filter.h"
 #include "sink_filter.h"
 
 class Handler: public common::data::Handler
@@ -16,7 +17,13 @@ public:
 
     virtual int data_pushed()
     {
-        pipeline_->resume();
+        pipeline_->wakeup();
+        return 0;
+    }
+
+    virtual int eof()
+    {
+        pipeline_->eof();
         return 0;
     }
 
@@ -53,6 +60,7 @@ public:
             push(common::data::type::us, buf);
             std::this_thread::sleep_for(std::chrono::milliseconds(period_));
         }
+        eof();
     }
 
     arma::SizeCube get_fmt()
@@ -96,5 +104,5 @@ public:
 
 private:
     arma::Cube<T>  data_;
-    arma::uword    i_;
+    arma::uword    i_ = 0;
 };

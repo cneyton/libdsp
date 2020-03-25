@@ -37,7 +37,7 @@ public:
 
     virtual int data_pushed()
     {
-        pipeline_->resume();
+        pipeline_->wakeup();
         return 0;
     }
 

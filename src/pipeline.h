@@ -25,7 +25,8 @@ public:
     {
         int ret;
         run_ = true;
-        while (run_) {
+        eof_ = false;
+        while (run_ && !eof_) {
             ret = run_once();
             common_die_zero(logger_, ret, -1, "pipeline run error");
             if (ret == 0) {
@@ -33,6 +34,18 @@ public:
                 common_die_zero(logger_, ret, -2, "pipeline wait error");
             }
         }
+
+        if (eof_) while (run_once()) {}
+        return 0;
+    }
+
+    int eof()
+    {
+        {
+            std::unique_lock<std::mutex> lk(mutex_);
+            eof_ = true;
+        }
+        cond_.notify_all();
         return 0;
     }
 
@@ -46,7 +59,7 @@ public:
         return 0;
     }
 
-    int resume()
+    int wakeup()
     {
         {
             std::unique_lock<std::mutex> lk(mutex_);
@@ -107,6 +120,7 @@ private:
     std::vector<std::unique_ptr<LinkInterface>>  links_;
 
     bool run_ = false;
+    bool eof_ = true;
     std::condition_variable cond_;
     std::mutex              mutex_;
 
