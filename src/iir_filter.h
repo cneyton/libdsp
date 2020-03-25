@@ -18,9 +18,10 @@ class iir: public Filter
 {
 public:
     iir(common::Logger logger, uint16_t nb_filters, const arma::vec& b, const arma::vec& a):
-        Log(logger), Filter(logger, "iir"),
+        Log(logger), Filter(logger, "iir"), b_(b), a_(a),
         filters_(std::vector<sp::IIR_filt<T1, T2, T1>>(nb_filters))
     {
+        /* TODO: do this at link <25-03-20, cneyton> */
         std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.clear();});
         std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.set_coeffs(b, a);});
 
@@ -39,25 +40,21 @@ public:
 
     virtual int activate()
     {
-        log_debug(logger_, "iir filter {} activated", this->name_);
+        log_debug(logger_, "{} filter activated", this->name_);
 
         auto input = dynamic_cast<Link<T1>*>(inputs_.at(0));
         if (input->empty()) return 0;
 
-        int ret;
-        auto in_chunk = std::make_shared<Chunk<T1>>();
-        ret = input->front(in_chunk);
-        common_die_zero(logger_, ret, -1, "failed to get front");
-        ret = input->pop();
-        common_die_zero(logger_, ret, -2, "failed to pop link");
+        auto chunk_in = input->front();
+        input->pop();
 
-        auto size = arma::size(*in_chunk);
-        auto out_chunk = std::make_shared<Chunk<T1>>(size, arma::fill::zeros);
+        auto size = arma::size(*chunk_in);
+        auto chunk_out = std::make_shared<Chunk<T1>>(size);
         uint n = 0;
         for (uint k = 0; k < size.n_slices; k++) {
             for (uint j = 0; j < size.n_cols; j++) {
-                auto in_ptr  = in_chunk->slice_colptr(k, j);
-                auto out_ptr = out_chunk->slice_colptr(k, j);
+                auto in_ptr  = chunk_in->slice_colptr(k, j);
+                auto out_ptr = chunk_out->slice_colptr(k, j);
                 arma::Col<T1> in(in_ptr, size.n_rows, false, true);
                 arma::Col<T1> out(out_ptr, size.n_rows, false, true);
                 out = filters_[n].filter(in);
@@ -66,16 +63,42 @@ public:
         }
 
         if (verbose_) {
-            in_chunk->print();
-            out_chunk->print();
+            chunk_in->print();
+            chunk_out->print();
         }
 
         auto output = dynamic_cast<Link<T1>*>(outputs_.at(0));
-        output->push(out_chunk);
+        output->push(chunk_out);
+        return 1;
+    }
+
+    virtual int negotiate_fmt()
+    {
+        auto input   = dynamic_cast<Link<T1>*>(inputs_.at(0));
+        auto output  = dynamic_cast<Link<T1>*>(outputs_.at(0));
+        auto fmt_in  = input->get_format();
+        auto fmt_out = output->get_format();
+
+        if (fmt_in != fmt_out)
+            return 0;
+
+        // Allocate and init filters
+        filters_ = std::vector<sp::IIR_filt<T1, T2, T1>>(fmt_in.n_cols * fmt_in.n_slices);
+        std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.clear();});
+        std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.set_coeffs(b_, a_);});
+
+        return 1;
+    }
+
+    virtual int clear()
+    {
+        std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.clear();});
         return 1;
     }
 
 private:
+    arma::Col<T2> b_;
+    arma::Col<T2> a_;
     std::vector<sp::IIR_filt<T1, T2, T1>> filters_;
 
     //static const Pad<T1> input_pad {

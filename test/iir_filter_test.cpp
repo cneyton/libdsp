@@ -1,112 +1,68 @@
-#include <memory>
-#include <thread>
-#include <chrono>
-#include <random>
-
-#include "common/log.h"
-#include "common/data.h"
+#include "test_utils.h"
 
 #include "iir_filter.h"
-#include "pipeline.h"
-#include "source_filter.h"
-#include "sink_filter.h"
 
+#include "spdlog/common.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
-common::Logger logger(spdlog::stdout_color_mt("dsp"));
 
-using iT = filter::iq<int16_t>;
+using iT = arma::cx_double;
 using oT = arma::cx_double;
 
-constexpr uint16_t nb_samples = 36;
-constexpr uint16_t nb_slots   = 7;
-constexpr uint16_t nb_frames  = 5;
-constexpr size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
-constexpr uint     nb_tot_frames = 10000;
-
-class Handler: public common::data::Handler
+int main(int argc, char * argv[])
 {
-public:
-    Handler(common::Logger logger, Pipeline * pipeline):
-        common::data::Handler(logger), pipeline_(pipeline) {}
-    virtual ~Handler() {}
+    if (argc != 5)
+        return -1;
 
-    virtual int data_pushed()
-    {
-        pipeline_->resume();
-        return 0;
-    }
+    std::string filename_in(argv[1]);
+    std::string filename_out(argv[2]);
+    std::string filename_params(argv[3]);
+    arma::uword chunk_size = std::stoi(argv[4]);
 
-private:
-    Pipeline * pipeline_;
-};
-
-void producer_th_func(common::data::Producer& p)
-{
-    std::random_device rd;
-    std::uniform_int_distribution dist(0, 254);
-    for (uint i = 0; i < nb_tot_frames; i++) {
-        common::data::ByteBuffer buf(elt_size, 1);
-        std::transform(buf.begin(), buf.end(), buf.begin(),
-                       [&](int x){return x * static_cast<uint8_t>(dist(rd));});
-        p.push(common::data::type::us, buf);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-}
-
-void pipeline_th_func(Pipeline& pipeline)
-{
-    pipeline.run();
-}
-
-int main()
-{
-    std::cout << "Input:\n"
-              << "   type: " << typeid(iT).name() << "\n"
-              << "   chunk size: (" << nb_frames << "," << nb_samples << "," << nb_slots << ")\n"
-              << "   nb frames: " << nb_tot_frames << "\n"
-              << "------------------------------\n";
-
-    logger->set_level(spdlog::level::info);
+    common::Logger logger(spdlog::stdout_color_mt("dsp"));
 
     Pipeline pipeline(logger);
     Handler data_handler(logger, &pipeline);
-    common::data::Producer producer(logger, &data_handler);
+    Producer<iT> producer(logger, &data_handler, filename_in);
 
-    auto source_filter = new filter::source<iT, oT>(logger, &data_handler,
-                                                    common::data::type::us);
-    source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
+    auto fmt_data = producer.get_fmt();
+    arma::SizeCube fmt_in(chunk_size, fmt_data.n_cols, fmt_data.n_slices);
+    std::cout << "Input:\n"
+              << "  type: " << typeid(iT).name() << "\n"
+              << "  chunk size: (" << fmt_in.n_rows << "," << fmt_in.n_cols << "," << fmt_data.n_slices << ")\n"
+              << "  nb frames total: " << fmt_data.n_rows << "\n"
+              << "------------------------------\n";
+
+    auto source_filter = new filter::source<iT, oT>(logger, &data_handler, common::data::type::us);
+    source_filter->set_chunk_size(fmt_in.n_rows, fmt_in.n_cols, fmt_in.n_slices);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
 
-    auto sink_filter = new filter::sink<oT>(logger);
+    auto sink_filter = new NpySink<oT>(logger, fmt_data);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
-    auto b = arma::vec(3);
-    auto a = arma::vec(3);
-    b << 1.7 << 2.8 << 3.6 << arma::endr;
-    a << 1.0 << 5.4 << 1.4 << arma::endr;
+    cnpy::NpyArray a_np = cnpy::npz_load(filename_params, "a");
+    cnpy::NpyArray b_np = cnpy::npz_load(filename_params, "b");
 
-    auto iir_filter = new filter::iir<oT, double>(logger, nb_slots * nb_samples, b, a);
+    arma::vec b(b_np.data<double>(), b_np.shape.at(0));
+    arma::vec a(a_np.data<double>(), a_np.shape.at(0));
+
+    auto iir_filter = new filter::iir<oT, double>(logger, fmt_in.n_cols * fmt_in.n_slices, b, a);
     pipeline.add_filter(std::unique_ptr<Filter>(iir_filter));
 
     std::cout << "Filter params:\n"
-              << "   b:\n ";
-    b.t().print();
-    std::cout << "   a:\n";
-    a.t().print();
+              << "   b:\n"; b.t().print();
+    std::cout << "   a:\n"; a.t().print();
     std::cout << "------------------------------\n";
 
-    arma::SizeCube format(nb_frames, nb_samples, nb_slots);
-    pipeline.link<oT>(source_filter, iir_filter, format);
-    pipeline.link<oT>(iir_filter, sink_filter, format);
+    pipeline.link<oT>(source_filter, iir_filter, fmt_in);
+    pipeline.link<oT>(iir_filter, sink_filter, fmt_in);
 
-    data_handler.reinit_queue(common::data::type::us, elt_size, 100);
-
-    std::thread pipeline_th(pipeline_th_func, std::ref(pipeline));
-    std::thread producer_th(producer_th_func, std::ref(producer));
+    std::thread pipeline_th(&Pipeline::run, &pipeline);
+    std::thread producer_th(&Producer<iT>::run, &producer);
 
     producer_th.join();
-    pipeline.stop();
     pipeline_th.join();
+
+    sink_filter->dump(filename_out);
 
     pipeline.print_stats();
 
