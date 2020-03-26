@@ -13,7 +13,7 @@ set(files
     tee_filter_test.cpp
     fd_block_test.cpp
     fhr_block_test.cpp
-    #full_pipeline_test.cpp
+    full_pipeline_test.cpp
     #arma_test.cpp
     )
 
