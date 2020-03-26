@@ -1,6 +1,5 @@
 #include "test_utils.h"
 
-#include "iir_filter.h"
 #include "fd_filter.h"
 
 #include "spdlog/common.h"
