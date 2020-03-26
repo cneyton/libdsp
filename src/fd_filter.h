@@ -40,6 +40,8 @@ public:
 
         auto chunk_out = std::make_shared<Chunk<T2>>(fmt_out);
 
+        /* TODO: add zero padding and windowing  <26-03-20, cneyton> */
+
         arma::Col<T2> w   = arma::regspace<arma::Col<T2>>(0, nfft_-1) - static_cast<T2>(nfft_)/2;
         arma::uword shift = nfft_/2;
         T2 scale          = 1/static_cast<T2>(nfft_);
@@ -61,6 +63,26 @@ public:
         }
 
         output->push(chunk_out);
+
+        return 1;
+    }
+
+    virtual int negotiate_fmt()
+    {
+        auto input   = dynamic_cast<Link<T1>*>(inputs_.at(0));
+        auto output  = dynamic_cast<Link<T2>*>(outputs_.at(0));
+        auto fmt_in  = input->get_format();
+        auto fmt_out = output->get_format();
+
+        if (fmt_in.n_cols != fmt_out.n_cols || fmt_in.n_slices != fmt_out.n_slices)
+            return 0;
+
+        if (fmt_out.n_rows != 1)
+            return 0;
+
+        // Create fftw plan by first application of fft
+        in_ = arma::Col<T1>(nfft_);
+        fftw_.fft_cx(in_, in_);
 
         return 1;
     }
