@@ -52,20 +52,17 @@ public:
                 idx_peaks = idx_peaks + radius_ - 1;
                 idx_peaks = idx_peaks(arma::find(idx_peaks <= period_max_));
 
-                arma::uvec odd_idx;
-                arma::uvec even_idx;
-                for (arma::uword& idx: idx_peaks) {
-                    if (idx % 2 == 0) even_idx << idx;
-                    else              odd_idx  << idx;
-                }
-
+                arma::uvec  even_idx;
+                arma::uvec  odd_idx;
                 arma::uword idx_max;
-                T2 fhr;
-                T3 corrcoef;
+                T2          fhr;
+                T3          corrcoef;
                 if (idx_peaks.n_elem <= 2) {
                     fhr      = 0;
                     corrcoef = 0;
                 } else {
+                    even_idx = idx_peaks(arma::regspace<arma::uvec>(0, 2, idx_peaks.n_elem-1));
+                    odd_idx  = idx_peaks(arma::regspace<arma::uvec>(1, 2, idx_peaks.n_elem-1));
                     if (arma::mean(xcorr(even_idx)) / arma::mean(xcorr(odd_idx)) < threshold_) {
                         idx_max = idx_peaks.at(1);
                     } else {
@@ -79,10 +76,9 @@ public:
                         fhr      = 0;
                         corrcoef = 0;
                     }
-
+                }
                 (*chunk_fhr)(0, j, k) = fhr;
                 (*chunk_cor)(0, j, k) = corrcoef;
-                }
             }
         }
 
