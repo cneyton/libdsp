@@ -1,127 +1,105 @@
-#include <thread>
-#include <chrono>
-#include <random>
+#include "test_utils.h"
 
-#include "common/log.h"
-#include "common/data.h"
-
-#include "source_filter.h"
 #include "iir_filter.h"
 #include "roll_filter.h"
 #include "buffer_filter.h"
 #include "fhr_filter.h"
-#include "sink_filter.h"
-#include "pipeline.h"
+
 #include "spdlog/sinks/stdout_color_sinks.h"
 
-common::Logger logger(spdlog::stdout_color_mt("dsp"));
-
-using iT = uint8_t;
+using iT = double;
 using oT = double;
 
-constexpr uint16_t nb_samples = 36;
-constexpr uint16_t nb_slots   = 7;
-constexpr uint16_t nb_frames  = 1;
-constexpr size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
-constexpr uint     nb_tot_frames = 10000;
-constexpr uint     period = 30;
-
-// filter params
-constexpr arma::uword fdperseg   = 133;
-constexpr arma::uword fdskip     = 8;
-constexpr arma::uword radius     = 7;
-constexpr arma::uword period_max = 67;
-constexpr double      threshold  = 0.6;
-
-class Handler: public common::data::Handler
+int main(int argc, char * argv[])
 {
-public:
-    Handler(common::Logger logger, Pipeline * pipeline):
-        common::data::Handler(logger), pipeline_(pipeline) {}
-    virtual ~Handler() {}
+    if (argc != 4)
+        return -1;
 
-    virtual int data_pushed()
-    {
-        pipeline_->wakeup();
-        return 0;
-    }
+    std::string filename_in(argv[1]);
+    std::string filename_out(argv[2]);
+    std::string filename_params(argv[3]);
 
-private:
-    Pipeline * pipeline_;
-};
+    cnpy::NpyArray period_np     = cnpy::npz_load(filename_params, "period");
+    cnpy::NpyArray a_np          = cnpy::npz_load(filename_params, "a");
+    cnpy::NpyArray b_np          = cnpy::npz_load(filename_params, "b");
+    cnpy::NpyArray fdskip_np     = cnpy::npz_load(filename_params, "fdskip");
+    cnpy::NpyArray fdperseg_np   = cnpy::npz_load(filename_params, "fdperseg");
+    cnpy::NpyArray radius_np     = cnpy::npz_load(filename_params, "radius");
+    cnpy::NpyArray period_max_np = cnpy::npz_load(filename_params, "period_max");
+    cnpy::NpyArray threshold_np  = cnpy::npz_load(filename_params, "threshold");
 
-void producer_th_func(common::data::Producer& p)
-{
-    std::random_device rd;
-    std::uniform_int_distribution dist(0, 254);
-    for (uint i = 0; i < nb_tot_frames; i++) {
-        common::data::ByteBuffer buf(elt_size, 1);
-        std::transform(buf.begin(), buf.end(), buf.begin(),
-                       [&](int x){return x * static_cast<uint8_t>(dist(rd));});
-        p.push(common::data::type::us, buf);
-        std::this_thread::sleep_for(std::chrono::milliseconds(period));
-    }
-}
+    arma::uword period(*period_np.data<arma::uword>());
 
-void pipeline_th_func(Pipeline& pipeline)
-{
-    pipeline.run();
-}
+    arma::vec   b(b_np.data<double>(), b_np.shape.at(0));
+    arma::vec   a(a_np.data<double>(), a_np.shape.at(0));
+    arma::uword fdskip(*fdskip_np.data<arma::uword>());
+    arma::uword fdperseg(*fdperseg_np.data<arma::uword>());
+    arma::uword radius(*radius_np.data<arma::uword>());
+    arma::uword period_max(*period_max_np.data<arma::uword>());
+    oT          threshold(*threshold_np.data<oT>());
 
-int main()
-{
-    logger->set_level(spdlog::level::info);
 
+    common::Logger logger(spdlog::stdout_color_mt("dsp"));
     Pipeline pipeline(logger);
     Handler data_handler(logger, &pipeline);
-    common::data::Producer producer(logger, &data_handler);
+    Producer<iT> producer(logger, &data_handler, filename_in, period);
 
-    arma::SizeCube fmt_source(nb_frames, nb_samples, nb_slots);
+    auto fmt_data = producer.get_fmt();
+    std::cout << "Input:\n"
+              << "  size: (" << fmt_data.n_rows << "," << fmt_data.n_cols << "," << fmt_data.n_slices << ")\n"
+              << "  period: " << period << "\n"
+              << "------------------------------\n"
+              << "Filter params:\n"
+              << "  fdskip:     " << fdskip << "\n"
+              << "  fdperseg:   " << fdperseg << "\n"
+              << "  radius:     " << radius << "\n"
+              << "  period_max: " << period_max << "\n"
+              << "  threshold:  " << threshold << "\n"
+              << "  b:\n"; b.t().print();
+    std::cout << "  a:\n"; a.t().print();
+    std::cout << "------------------------------\n";
+
+    arma::SizeCube fmt_in(1, fmt_data.n_cols, fmt_data.n_slices);
     auto source_filter = new filter::source<iT, oT>(logger, &data_handler, common::data::type::us);
-    source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
+    source_filter->set_chunk_size(fmt_in.n_rows, fmt_in.n_cols, fmt_in.n_slices);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
 
-    arma::SizeCube fmt_buffer(fdskip, nb_samples, nb_slots);
+    arma::SizeCube fmt_buffer(fdskip, fmt_in.n_cols, fmt_in.n_slices);
     auto buffer_filter = new filter::buffer<oT>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(buffer_filter));
 
-    auto b = arma::vec(3);
-    auto a = arma::vec(3);
-    b << 1.7 << 2.8 << 3.6 << arma::endr;
-    a << 1.0 << 5.4 << 1.4 << arma::endr;
-
-    auto iir_filter = new filter::iir<oT, double>(logger, nb_slots * nb_samples, b, a);
+    auto iir_filter = new filter::iir<oT, double>(logger, fmt_in.n_cols * fmt_in.n_slices, b, a);
     pipeline.add_filter(std::unique_ptr<Filter>(iir_filter));
 
-    arma::SizeCube fmt_roll(fdperseg, nb_samples, nb_slots);
-    auto roll_filter = new filter::roll<oT>(logger, fdskip);
+    arma::SizeCube fmt_fhr(fdperseg, fmt_in.n_cols, fmt_in.n_slices);
+    auto roll_filter = new filter::roll<oT>(logger, 1);
     pipeline.add_filter(std::unique_ptr<Filter>(roll_filter));
 
-    arma::SizeCube fmt_fhr(1, nb_samples, nb_slots);
+    arma::SizeCube fmt_out(1, fmt_in.n_cols, fmt_in.n_slices);
     auto fhr_filter = new filter::fhr<oT, oT, oT>(logger, radius, period_max, threshold);
     pipeline.add_filter(std::unique_ptr<Filter>(fhr_filter));
 
-    auto sink_filter_0 = new filter::sink<oT>(logger);
+    auto sink_filter_0 = new NpySink<oT>(logger, fmt_data);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_0));
 
-    auto sink_filter_1 = new filter::sink<oT>(logger);
+    auto sink_filter_1 = new NpySink<oT>(logger, fmt_data);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
 
-    pipeline.link<oT>(source_filter, buffer_filter, fmt_source);
+    pipeline.link<oT>(source_filter, buffer_filter, fmt_in);
     pipeline.link<oT>(buffer_filter, iir_filter, fmt_buffer);
     pipeline.link<oT>(iir_filter, roll_filter, fmt_buffer);
-    pipeline.link<oT>(roll_filter, fhr_filter, fmt_roll);
-    pipeline.link<oT>(fhr_filter, sink_filter_0, fmt_fhr);
-    pipeline.link<oT>(fhr_filter, sink_filter_1, fmt_fhr);
+    pipeline.link<oT>(roll_filter, fhr_filter, fmt_fhr);
+    pipeline.link<oT>(fhr_filter, sink_filter_0, fmt_out);
+    pipeline.link<oT>(fhr_filter, sink_filter_1, fmt_out);
 
-    data_handler.reinit_queue(common::data::type::us, elt_size, 1000);
-
-    std::thread pipeline_th(pipeline_th_func, std::ref(pipeline));
-    std::thread producer_th(producer_th_func, std::ref(producer));
+    std::thread pipeline_th(&Pipeline::run, &pipeline);
+    std::thread producer_th(&Producer<iT>::run, &producer);
 
     producer_th.join();
-    pipeline.stop();
     pipeline_th.join();
+
+    sink_filter_0->dump("fhr_" + filename_out);
+    sink_filter_1->dump("corr_" + filename_out);
 
     pipeline.print_stats();
 
