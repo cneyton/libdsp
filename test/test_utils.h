@@ -101,6 +101,9 @@ public:
 
     void dump(std::string filename)
     {
+        auto input = dynamic_cast<Link<T>*>(this->inputs_.at(0));
+        auto fmt   = input->get_format();
+        data_.resize(fmt.n_rows * i_, fmt.n_cols, fmt.n_slices);
         cnpy::npy_save(filename, data_.memptr(), {data_.n_slices, data_.n_cols, data_.n_rows}, "w");
     }
 
