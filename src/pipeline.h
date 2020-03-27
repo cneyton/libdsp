@@ -159,7 +159,9 @@ private:
                 ret = filter->activate();
                 common_die_zero(logger_, ret, -1,
                                 "failed to activate filter {}", filter->get_name());
-                filter->reset_ready();
+                // no reset is a source pushed data
+                if (!filter->is_source() || !ret)
+                    filter->reset_ready();
 #ifdef DSP_PROFILE
                 if (ret) {
                     auto stop = std::chrono::high_resolution_clock::now();
