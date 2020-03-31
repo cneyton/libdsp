@@ -21,15 +21,20 @@ public:
     {
         log_debug(logger_, "{} filter activated", this->name_);
 
-        auto input = dynamic_cast<Link<T>*>(inputs_.at(0));
+        auto input    = dynamic_cast<Link<T>*>(inputs_.at(0));
+        auto output   = dynamic_cast<Link<T>*>(outputs_.at(0));
+        auto chunk_in = std::make_shared<Chunk<T>>();
 
-        if (input->empty()) return 0;
-        auto chunk_in = input->front();
-        input->pop();
-
+        int ret;
+        ret = input->pop(chunk_in);
+        common_die_zero(logger_, ret, -1, "failed to pop chunk");
+        if (!ret) {
+            if (input->eof())
+                output->eof_reached();
+            return 0;
+        }
         chunk_queue_.push_back(chunk_in);
 
-        auto output  = dynamic_cast<Link<T>*>(outputs_.at(0));
         auto fmt_in  = input->get_format();
         auto fmt_out = output->get_format();
 

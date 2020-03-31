@@ -25,16 +25,24 @@ public:
     {
         log_debug(logger_, "fhr filter {} activated", this->name_);
 
-        auto input = dynamic_cast<Link<T1>*>(inputs_.at(0));
-        if (input->empty()) return 0;
-
-        auto chunk_in  = input->front();
-        auto fmt_in    = input->get_format();
-        input->pop();
-
+        auto input      = dynamic_cast<Link<T1>*>(inputs_.at(0));
         auto output_fhr = dynamic_cast<Link<T2>*>(outputs_.at(0));
         auto output_cor = dynamic_cast<Link<T3>*>(outputs_.at(1));
-        auto fmt_out    = output_fhr->get_format();
+        auto chunk_in   = std::make_shared<Chunk<T1>>();
+
+        int ret;
+        ret = input->pop(chunk_in);
+        common_die_zero(logger_, ret, -1, "failed to pop chunk");
+        if (!ret) {
+            if (input->eof()) {
+                output_fhr->eof_reached();
+                output_cor->eof_reached();
+            }
+            return 0;
+        }
+
+        auto fmt_in    = input->get_format();
+        auto fmt_out   = output_fhr->get_format();
 
         auto chunk_fhr = std::make_shared<Chunk<T2>>(fmt_out);
         auto chunk_cor = std::make_shared<Chunk<T3>>(fmt_out);

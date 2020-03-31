@@ -28,20 +28,24 @@ public:
     {
         log_debug(logger_, "{} filter activated", this->name_);
 
-        auto input = dynamic_cast<Link<T1>*>(inputs_.at(0));
-        if (input->empty()) return 0;
+        auto input    = dynamic_cast<Link<T1>*>(inputs_.at(0));
+        auto output   = dynamic_cast<Link<T2>*>(outputs_.at(0));
+        auto chunk_in = std::make_shared<Chunk<T1>>();
 
-        auto chunk_in = input->front();
-        input->pop();
+        int ret;
+        ret = input->pop(chunk_in);
+        common_die_zero(logger_, ret, -1, "failed to pop chunk");
+        if (!ret) {
+            if (input->eof())
+                output->eof_reached();
+            return 0;
+        }
 
-        auto output  = dynamic_cast<Link<T2>*>(outputs_.at(0));
-        auto fmt_in  = input->get_format();
-        auto fmt_out = output->get_format();
-
+        auto fmt_in    = input->get_format();
+        auto fmt_out   = output->get_format();
         auto chunk_out = std::make_shared<Chunk<T2>>(fmt_out);
 
         /* TODO: add zero padding and windowing  <26-03-20, cneyton> */
-
         arma::Col<T2> w   = arma::regspace<arma::Col<T2>>(0, nfft_-1) - static_cast<T2>(nfft_)/2;
         arma::uword shift = nfft_/2;
         T2 scale          = 1/static_cast<T2>(nfft_);

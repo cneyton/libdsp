@@ -42,11 +42,18 @@ public:
     {
         log_debug(logger_, "{} filter activated", this->name_);
 
-        auto input = dynamic_cast<Link<T1>*>(inputs_.at(0));
-        if (input->empty()) return 0;
+        auto input    = dynamic_cast<Link<T1>*>(inputs_.at(0));
+        auto output   = dynamic_cast<Link<T1>*>(outputs_.at(0));
+        auto chunk_in = std::make_shared<Chunk<T1>>();
 
-        auto chunk_in = input->front();
-        input->pop();
+        int ret;
+        ret = input->pop(chunk_in);
+        common_die_zero(logger_, ret, -1, "failed to pop chunk");
+        if (!ret) {
+            if (input->eof())
+                output->eof_reached();
+            return 0;
+        }
 
         auto size = arma::size(*chunk_in);
         auto chunk_out = std::make_shared<Chunk<T1>>(size);
@@ -67,7 +74,6 @@ public:
             chunk_out->print();
         }
 
-        auto output = dynamic_cast<Link<T1>*>(outputs_.at(0));
         output->push(chunk_out);
         return 1;
     }

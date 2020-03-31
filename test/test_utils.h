@@ -145,10 +145,9 @@ public:
         int ret;
         auto chunk = std::make_shared<Chunk<T>>();
         ret = input->pop(chunk);
-        common_die_zero(this->logger_, ret, -1, "failed to get front");
-        if (!ret) {
-            return 0;
-        }
+        common_die_zero(this->logger_, ret, -1, "failed to pop chunk");
+        if (!ret) return 0;
+
         data_.rows(i_ * chunk->n_rows, (i_+1) * chunk->n_rows - 1) = *chunk;
         i_++;
 

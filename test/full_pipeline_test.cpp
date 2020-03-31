@@ -20,7 +20,6 @@ int main(int argc, char * argv[])
     std::string filename_out(argv[2]);
     std::string filename_params(argv[3]);
 
-    cnpy::NpyArray period_np     = cnpy::npz_load(filename_params, "period");
     cnpy::NpyArray a1_np         = cnpy::npz_load(filename_params, "a1");
     cnpy::NpyArray b1_np         = cnpy::npz_load(filename_params, "b1");
     cnpy::NpyArray a2_np         = cnpy::npz_load(filename_params, "a2");
@@ -32,8 +31,6 @@ int main(int argc, char * argv[])
     cnpy::NpyArray radius_np     = cnpy::npz_load(filename_params, "radius");
     cnpy::NpyArray period_max_np = cnpy::npz_load(filename_params, "period_max");
     cnpy::NpyArray threshold_np  = cnpy::npz_load(filename_params, "threshold");
-
-    arma::uword period(*period_np.data<arma::uword>());
 
     arma::vec   b1(b1_np.data<double>(), b1_np.shape.at(0));
     arma::vec   a1(a1_np.data<double>(), a1_np.shape.at(0));
@@ -49,33 +46,14 @@ int main(int argc, char * argv[])
 
 
     common::Logger logger(spdlog::stdout_color_mt("dsp"));
+    logger->set_level(spdlog::level::info);
+
     Pipeline pipeline(logger);
-    Handler data_handler(logger, &pipeline);
-    Producer<T_iq> producer(logger, &data_handler, filename_in, period);
 
-    auto fmt_data = producer.get_fmt();
-    std::cout << "Input:\n"
-              << "  size: (" << fmt_data.n_rows << "," << fmt_data.n_cols << "," << fmt_data.n_slices << ")\n"
-              << "  period: " << period << "\n"
-              << "------------------------------\n"
-              << "Filters params:\n"
-              << "  nfft:       " << nfft << "\n"
-              << "  nskip:      " << nskip << "\n"
-              << "  fdskip:     " << fdskip << "\n"
-              << "  fdperseg:   " << fdperseg << "\n"
-              << "  radius:     " << radius << "\n"
-              << "  period_max: " << period_max << "\n"
-              << "  threshold:  " << threshold << "\n"
-              << "  b1:\n"; b1.t().print();
-    std::cout << "  a1:\n"; a1.t().print();
-    std::cout << "  b2:\n"; b2.t().print();
-    std::cout << "  a2:\n"; a2.t().print();
-    std::cout << "------------------------------\n";
-
-    arma::SizeCube fmt_in(nskip, fmt_data.n_cols, fmt_data.n_slices);
-    auto source_filter = new filter::source<T_iq, T_iq>(logger, &data_handler, common::data::type::us);
-    source_filter->set_chunk_size(fmt_in.n_rows, fmt_in.n_cols, fmt_in.n_slices);
+    auto source_filter = new NpySource<T_iq>(logger, filename_in);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
+    auto fmt_data = source_filter->get_fmt();
+    arma::SizeCube fmt_in(nskip, fmt_data.n_cols, fmt_data.n_slices);
 
     auto iir_filter_iq = new filter::iir<T_iq, double>(logger, fmt_in.n_cols * fmt_in.n_slices, b1, a1);
     pipeline.add_filter(std::unique_ptr<Filter>(iir_filter_iq));
@@ -119,11 +97,24 @@ int main(int argc, char * argv[])
     pipeline.link<T_fd>(fhr_filter, sink_filter_0, fmt_out);
     pipeline.link<T_fd>(fhr_filter, sink_filter_1, fmt_out);
 
-    std::thread pipeline_th(&Pipeline::run, &pipeline);
-    std::thread producer_th(&Producer<T_iq>::run, &producer);
-
-    producer_th.join();
-    pipeline_th.join();
+    std::cout << "Input:\n"
+              << "  type: " << typeid(T_iq).name() << "\n"
+              << "  chunk size: (" << fmt_in.n_rows << "," << fmt_in.n_cols << "," << fmt_in.n_slices << ")\n"
+              << "  nb frames total: " << fmt_data.n_rows << "\n"
+              << "------------------------------\n"
+              << "Filters params:\n"
+              << "  nfft:       " << nfft << "\n"
+              << "  nskip:      " << nskip << "\n"
+              << "  fdskip:     " << fdskip << "\n"
+              << "  fdperseg:   " << fdperseg << "\n"
+              << "  radius:     " << radius << "\n"
+              << "  period_max: " << period_max << "\n"
+              << "  threshold:  " << threshold << "\n"
+              << "  b1: "; b1.t().print();
+    std::cout << "  a1: "; a1.t().print();
+    std::cout << "  b2: "; b2.t().print();
+    std::cout << "  a2: "; a2.t().print();
+    std::cout << "------------------------------\n";
 
     sink_filter_0->dump("fhr_" + filename_out);
     sink_filter_1->dump("corr_" + filename_out);
