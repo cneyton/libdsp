@@ -1,3 +1,4 @@
+#include <memory>
 #include <thread>
 #include <cnpy.h>
 
@@ -17,13 +18,11 @@ public:
 
     virtual int data_pushed()
     {
-        pipeline_->wakeup();
         return 0;
     }
 
     virtual int eof()
     {
-        pipeline_->eof();
         return 0;
     }
 
@@ -76,6 +75,58 @@ private:
     arma::uword   queue_size_;
 };
 
+
+
+template<typename T>
+class NpySource: public Filter
+{
+public:
+    NpySource(common::Logger logger, std::string filename):
+        common::Log(logger), Filter(logger, "npy source"), filename_(filename)
+    {
+        cnpy::NpyArray np_array = cnpy::npy_load(filename_);
+        arma::uword n_rows   = np_array.shape.at(2);
+        arma::uword n_cols   = np_array.shape.at(1);
+        arma::uword n_slices = np_array.shape.at(0);
+
+        data_ = arma::Cube<T>(np_array.data<T>(), n_rows, n_cols, n_slices);
+    }
+
+    virtual ~NpySource() {}
+
+    virtual int activate()
+    {
+        log_debug(logger_, "{} filter activated, i = {}", this->name_, i_);
+        auto output = dynamic_cast<Link<T>*>(outputs_.at(0));
+        auto fmt    = output->get_format();
+
+        arma::uword row_beg = i_ * fmt.n_rows;
+        arma::uword row_end = (i_+1) * fmt.n_rows;
+        if (row_end <= data_.n_rows) {
+            auto chunk = std::make_shared<Chunk<T>>(data_.rows(row_beg, row_end - 1));
+            output->push(chunk);
+            i_++;
+            return 1;
+        } else {
+            log_debug(logger_, "eof");
+            output->eof_reached();
+            return 0;
+        }
+    }
+
+    arma::SizeCube get_fmt()
+    {
+        return arma::size(data_);
+    }
+
+private:
+    std::string    filename_;
+    arma::Cube<T>  data_;
+    arma::uword    i_ = 0;
+};
+
+
+
 template<typename T>
 class NpySink: public filter::sink<T>
 {
@@ -87,12 +138,17 @@ public:
 
     virtual int activate()
     {
+        log_debug(this->logger_, "{} filter activated, i = {}", this->name_, i_);
+
         auto input = dynamic_cast<Link<T>*>(this->inputs_.at(0));
-        if (input->empty()) return 0;
 
-        auto chunk = input->front();
-        input->pop();
-
+        int ret;
+        auto chunk = std::make_shared<Chunk<T>>();
+        ret = input->pop(chunk);
+        common_die_zero(this->logger_, ret, -1, "failed to get front");
+        if (!ret) {
+            return 0;
+        }
         data_.rows(i_ * chunk->n_rows, (i_+1) * chunk->n_rows - 1) = *chunk;
         i_++;
 
@@ -102,6 +158,10 @@ public:
     void dump(std::string filename)
     {
         auto input = dynamic_cast<Link<T>*>(this->inputs_.at(0));
+        while (!input->eof()) {
+            activate();
+            this->pipeline_->run();
+        }
         auto fmt   = input->get_format();
         data_.resize(fmt.n_rows * i_, fmt.n_cols, fmt.n_slices);
         cnpy::npy_save(filename, data_.memptr(), {data_.n_slices, data_.n_cols, data_.n_rows}, "w");

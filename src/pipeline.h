@@ -23,29 +23,7 @@ public:
 
     int run()
     {
-        int ret;
-        run_ = true;
-        eof_ = false;
-        while (run_ && !eof_) {
-            ret = run_once();
-            common_die_zero(logger_, ret, -1, "pipeline run error");
-            if (ret == 0) {
-                ret = wait();
-                common_die_zero(logger_, ret, -2, "pipeline wait error");
-            }
-        }
-
-        if (eof_) while (run_once()) {}
-        return 0;
-    }
-
-    int eof()
-    {
-        {
-            std::unique_lock<std::mutex> lk(mutex_);
-            eof_ = true;
-        }
-        cond_.notify_all();
+        while (run_once()) { }
         return 0;
     }
 
@@ -63,9 +41,6 @@ public:
     {
         {
             std::unique_lock<std::mutex> lk(mutex_);
-            for (auto& filter: filters_)
-                if (filter->is_source())
-                    filter->set_ready();
         }
         cond_.notify_all();
         return 0;

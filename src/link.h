@@ -35,10 +35,16 @@ public:
         return 0;
     }
 
+    void eof_reached()  {eof_ = 1;}
+    bool eof() const    {return eof_;}
+
+
 protected:
     Filter * const src_;
     Filter * const dst_;
     const arma::SizeCube  format_;
+
+    int eof_ = 0;
 };
 
 template<typename T>
@@ -46,7 +52,6 @@ struct Pad
 {
     using type = T;
     std::string     name;
-    //arma::SizeCube  format;
 };
 
 template<typename T>
@@ -79,12 +84,17 @@ public:
         return 0;
     }
 
-    int front(elem_type& chunk) const
+    int pop(elem_type& chunk)
     {
-        if (chunk_queue_.empty())
-            return -1;
+        if (chunk_queue_.empty()) {
+            common_die_null(logger_, src_, -1, "src nullptr");
+            if (!eof_)
+                src_->set_ready();
+            return 0;
+        }
         chunk = chunk_queue_.front();
-        return 0;
+        chunk_queue_.pop_front();
+        return 1;
     }
 
     elem_type front() const
@@ -92,12 +102,9 @@ public:
         return chunk_queue_.front();
     }
 
-    int pop()
+    void pop()
     {
-        if (chunk_queue_.empty())
-            return -1;
         chunk_queue_.pop_front();
-        return 0;
     }
 
     int head(std::vector<elem_type>& frames, const arma::uword n) const

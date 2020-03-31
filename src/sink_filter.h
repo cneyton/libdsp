@@ -16,22 +16,21 @@ public:
 
     virtual int activate()
     {
-        log_debug(logger_, "sink {} activated", this->name_);
+        log_debug(logger_, "{} filter activated", this->name_);
 
         auto input = dynamic_cast<Link<T>*>(inputs_.at(0));
-        if (input->empty()) return 0;
 
         int ret;
         auto chunk = std::make_shared<Chunk<T>>();
-        ret = input->front(chunk);
+        ret = input->pop(chunk);
         common_die_zero(logger_, ret, -1, "failed to get front");
-        ret = input->pop();
-        common_die_zero(logger_, ret, -2, "failed to pop link");
+        if (!ret) {
+            return 0;
+        }
         if (verbose_)
             chunk->print();
         return 1;
     }
-private:
 };
 
 } /* namespace filter */

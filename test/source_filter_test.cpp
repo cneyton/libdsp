@@ -3,8 +3,7 @@
 #include "spdlog/common.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
-using iT = double;
-using oT = double;
+using T = arma::cx_double;
 
 /* TODO: we should test different type of input/output <20-02-20, cneyton> */
 int main(int argc, char * argv[])
@@ -16,34 +15,25 @@ int main(int argc, char * argv[])
     std::string filename_out(argv[2]);
 
     common::Logger logger(spdlog::stdout_color_mt("dsp"));
+    logger->set_level(spdlog::level::debug);
 
     Pipeline pipeline(logger);
-    Handler data_handler(logger, &pipeline);
-    Producer<iT> producer(logger, &data_handler, filename_in);
 
-    auto fmt_data = producer.get_fmt();
-    arma::SizeCube fmt_in(2, fmt_data.n_cols, fmt_data.n_slices);
-    std::cout << "Input:\n"
-              << "  type: " << typeid(iT).name() << "\n"
-              << "  chunk size: (" << fmt_in.n_rows << "," << fmt_in.n_cols << "," << fmt_data.n_slices << ")\n"
-              << "  nb frames total: " << fmt_data.n_rows << "\n"
-              << "------------------------------\n";
-
-    auto source_filter = new filter::source<iT, oT>(logger, &data_handler, common::data::type::us);
-    source_filter->set_chunk_size(fmt_in.n_rows, fmt_in.n_cols, fmt_in.n_slices);
+    auto source_filter = new NpySource<T>(logger, filename_in);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
+    auto fmt_data = source_filter->get_fmt();
 
-    auto sink_filter = new NpySink<oT>(logger, fmt_data);
+    auto sink_filter = new NpySink<T>(logger, fmt_data);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
-    pipeline.link<oT>(source_filter, sink_filter, fmt_in);
+    arma::SizeCube fmt(20, fmt_data.n_cols, fmt_data.n_slices);
+    pipeline.link<T>(source_filter, sink_filter, fmt);
 
-    std::thread pipeline_th(&Pipeline::run, &pipeline);
-    std::thread producer_th(&Producer<iT>::run, &producer);
-
-    producer_th.join();
-    pipeline.stop();
-    pipeline_th.join();
+    std::cout << "Input:\n"
+              << "  type: " << typeid(T).name() << "\n"
+              << "  chunk size: (" << fmt.n_rows << "," << fmt.n_cols << "," << fmt.n_slices << ")\n"
+              << "  nb frames total: " << fmt_data.n_rows << "\n"
+              << "------------------------------\n";
 
     sink_filter->dump(filename_out);
 
