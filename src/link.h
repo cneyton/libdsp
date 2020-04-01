@@ -54,6 +54,7 @@ struct Pad
     std::string     name;
 };
 
+/* TODO: add a pool of chunk to avoid oom <01-04-20, cneyton> */
 template<typename T>
 class Link : public LinkInterface
 {

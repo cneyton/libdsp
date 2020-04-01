@@ -91,7 +91,6 @@ int main(int argc, char * argv[])
     sink_filter_0->dump("fhr_" + filename_out);
     sink_filter_1->dump("corr_" + filename_out);
 
-
     pipeline.print_stats();
 
     return 0;
