@@ -108,45 +108,6 @@ public:
         chunk_queue_.pop_front();
     }
 
-    int head(std::vector<elem_type>& frames, const arma::uword n) const
-    {
-        if (chunk_queue_.size() < n)
-            return -1;
-
-        frames.clear();
-        frames.reserve(n);
-        std::for_each(chunk_queue_.cbegin(), chunk_queue_.cbegin() + n,
-                      [&](auto& chunk){frames.push_back(chunk);});
-        return 0;
-    }
-
-    int pop_head(const arma::uword n)
-    {
-        if (chunk_queue_.size() < n)
-            return -1;
-
-        for (arma::uword i = 0; i < n; ++i)
-            chunk_queue_.pop_front();
-
-        return 0;
-    }
-
-    Chunk<T> head_chunk(const arma::uword n) const
-    {
-        auto chunk  = arma::Cube<T>(n, format_.n_cols, format_.n_slices);
-        auto frames = std::vector<elem_type>();
-        head(frames, n);
-
-        for (arma::uword i = 0; i < n; ++i) {
-            for (arma::uword j = 0; j < format_.n_cols; ++j) {
-                for (arma::uword k = 0; k < format_.n_slices; ++k) {
-                    chunk(i, j, k) = frames[i]->operator()(0, j, k);
-                }
-            }
-        }
-        return chunk;
-    }
-
     arma::uword  size() const {return chunk_queue_.size();}
     bool        empty() const {return chunk_queue_.empty();}
 
