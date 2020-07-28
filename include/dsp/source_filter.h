@@ -1,92 +1,76 @@
-#ifndef SOURCE_FILTER_H
-#define SOURCE_FILTER_H
+#pragma once
 
 #include "common/log.h"
 #include "common/data.h"
 #include "filter.h"
 #include "link.h"
+#include "exception.h"
 
-namespace filter
+namespace dsp::filter
 {
 
 template<typename T1, typename T2>
-class source: public Filter, public common::data::Consumer
+class source: public Filter
 {
 public:
-    source(common::Logger logger, common::data::Handler * data_handler, common::data::type type):
-        Log(logger), Filter(logger, "source"),
-        common::data::Consumer(logger, data_handler), type_(type)
+    source(common::Logger logger, common::data::Handler * h,
+           std::string_view type, arma::SizeCube& fmt):
+        Log(logger), Filter(logger, "source"), data_handler_(h),
+        type_(type), format_(fmt)
     {
         source_ = true;
     }
 
-    ~source() {}
-
-    int set_chunk_size(uint16_t nb_frames, uint16_t nb_samples, uint16_t nb_slots)
-    {
-        nb_frames_  = nb_frames;
-        nb_samples_ = nb_samples;
-        nb_slots_   = nb_slots;
-        return 0;
-    };
-
     virtual int activate()
     {
-        log_debug(logger_, "source {} activated", this->name_);
+        log_debug(logger_, "filter {} activated", name_);
 
-        int ret;
-        std::vector<common::data::ByteBuffer> data;
+        Link<T2> * output = dynamic_cast<Link<T2>*>(outputs_.at(0));
 
-        ret = pop_chunk(type_, nb_frames_, data);
-        common_die_zero(logger_, ret, -1, "source {} failed to pop chunk", this->name_);
+        std::vector<std::string> data;
+        switch (data_handler_->pop_chunk(type_, format_.n_rows, data)) {
+        case 0: return 0;
+        case 1: break;
+        case 2: output->eof_reached(); return 1;
+        default:
+            throw filter_error("wrong enum, you should not be here");
+        }
 
-        if (ret == 0) {
+        if (!data_handler_->pop_chunk(type_, format_.n_rows, data)) {
             return 0;
         }
 
-        auto chunk = std::make_shared<Chunk<T2>>(nb_frames_, nb_samples_, nb_slots_);
+        auto chunk = std::make_shared<Chunk<T2>>(format_);
 
-        uint16_t i = 0;
-        for(auto& buf: data)
-        {
-            ret = fill_frame(*chunk, buf, i);
-            common_die_zero(logger_, ret, -2, "source {} failed to fill frame", this->name_);
-            i++;
+        arma::uword i = 0;
+        for(auto& buf: data) {
+            fill_frame(*chunk, buf, i++);
         }
 
         if (verbose_)
             chunk->print();
 
-        Link<T2> * output = dynamic_cast<Link<T2>*>(outputs_.at(0));
         output->push(chunk);
         return 1;
     }
 
 private:
-    common::data::type type_;
-    uint16_t nb_frames_;
-    uint16_t nb_samples_;
-    uint16_t nb_slots_;
+    common::data::Handler * data_handler_;
+    std::string             type_;
+    arma::SizeCube          format_;
 
-    int fill_frame(Chunk<T2>& chunk, const common::data::ByteBuffer& buf,
-                   const arma::uword frame_nb) const;
-};
-
-/* TODO: move somewhere else <20-02-20, cneyton> */
-template<typename T>
-struct iq
-{
-    using elem_type = T;
-    T i; T q;
+    static void fill_frame(Chunk<T2>& chunk, const std::string& buf, const arma::uword frame_nb);
 };
 
 template<typename T1, typename T2>
 inline
-int source<T1, T2>::fill_frame(Chunk<T2>& chunk, const common::data::ByteBuffer& buf,
-                               const arma::uword frame_nb) const
+void source<T1, T2>::fill_frame(Chunk<T2>& chunk, const std::string& buf, const arma::uword frame_nb)
 {
-    if(buf.size() != chunk.n_cols * chunk.n_slices * sizeof(T1))
-        common_die(logger_, -1, "invalid buffer size");
+    size_t expected_size = chunk.n_cols * chunk.n_slices * sizeof(T1);
+    if (buf.size() != expected_size) {
+        throw filter_error(fmt::format("buffer size ({}) doesn't match expected size ({})",
+                                       buf.size(), expected_size));
+    }
 
     auto it = buf.cbegin();
     arma::uword j = 0, k = 0;
@@ -100,17 +84,18 @@ int source<T1, T2>::fill_frame(Chunk<T2>& chunk, const common::data::ByteBuffer&
         j = n % chunk.n_cols;
         k = n / chunk.n_cols;
     }
-    return 0;
 }
 
 template<>
 inline
-int source<iq<int16_t>, arma::cx_double>::fill_frame(Chunk<arma::cx_double>& chunk,
-                                                     const common::data::ByteBuffer& buf,
-                                                     const arma::uword frame_nb) const
+void source<common::data::us::IQ<int16_t>, arma::cx_double>::fill_frame(Chunk<arma::cx_double>& chunk,
+                                                                        const std::string& buf,
+                                                                        const arma::uword frame_nb)
 {
-    if(buf.size() != chunk.n_cols * chunk.n_slices * sizeof(iq<int16_t>)) {
-        common_die(logger_, -1, "invalid buffer size");
+    size_t expected_size = chunk.n_cols * chunk.n_slices * sizeof(common::data::us::IQ<int16_t>);
+    if (buf.size() != expected_size) {
+        throw filter_error(fmt::format("buffer size ({}) doesn't match expected size ({})",
+                                       buf.size(), expected_size));
     }
 
     auto it = buf.cbegin();
@@ -118,24 +103,25 @@ int source<iq<int16_t>, arma::cx_double>::fill_frame(Chunk<arma::cx_double>& chu
     arma::uword n = 0;
     while(it != buf.cend())
     {
-        auto x = reinterpret_cast<const iq<int16_t>*>(&*it);
+        auto x = reinterpret_cast<const common::data::us::IQ<int16_t>*>(&*it);
         it += sizeof(*x);
         chunk.at(frame_nb, j, k) = arma::cx_double(x->i, x->q);
         n++;
         j = n % chunk.n_cols;
         k = n / chunk.n_cols;
     }
-    return 0;
 }
 
 template<>
 inline
-int source<iq<int16_t>, arma::cx_float>::fill_frame(Chunk<arma::cx_float>& chunk,
-                                                    const common::data::ByteBuffer& buf,
-                                                    const arma::uword frame_nb) const
+void source<common::data::us::IQ<int16_t>, arma::cx_float>::fill_frame(Chunk<arma::cx_float>& chunk,
+                                                                       const std::string& buf,
+                                                                       const arma::uword frame_nb)
 {
-    if(buf.size() != chunk.n_cols * chunk.n_slices * sizeof(iq<int16_t>)) {
-        common_die(logger_, -1, "invalid buffer size");
+    size_t expected_size = chunk.n_cols * chunk.n_slices * sizeof(common::data::us::IQ<int16_t>);
+    if (buf.size() != expected_size) {
+        throw filter_error(fmt::format("buffer size ({}) doesn't match expected size ({})",
+                                       buf.size(), expected_size));
     }
 
     auto it = buf.cbegin();
@@ -143,17 +129,13 @@ int source<iq<int16_t>, arma::cx_float>::fill_frame(Chunk<arma::cx_float>& chunk
     arma::uword n = 0;
     while(it != buf.cend())
     {
-        auto x = reinterpret_cast<const iq<int16_t>*>(&*it);
+        auto x = reinterpret_cast<const common::data::us::IQ<int16_t>*>(&*it);
         it += sizeof(*x);
         chunk.at(frame_nb, j, k) = arma::cx_float(x->i, x->q);
         n++;
         j = n % chunk.n_cols;
         k = n / chunk.n_cols;
     }
-    return 0;
 }
 
-
-} /* namespace filter */
-
-#endif /* SOURCE_FILTER_H */
+} /* namespace dsp::filter */

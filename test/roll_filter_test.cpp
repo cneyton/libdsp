@@ -1,8 +1,8 @@
 #include "test_utils.h"
 
-#include "iir_filter.h"
-#include "roll_filter.h"
-#include "fd_filter.h"
+#include "dsp/iir_filter.h"
+#include "dsp/roll_filter.h"
+#include "dsp/fd_filter.h"
 
 #include "spdlog/common.h"
 #include "spdlog/sinks/stdout_color_sinks.h"

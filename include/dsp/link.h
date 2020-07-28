@@ -1,5 +1,4 @@
-#ifndef LINK_H
-#define LINK_H
+#pragma once
 
 #include <string>
 #include <memory>
@@ -12,9 +11,11 @@
 
 #include "filter.h"
 
+namespace dsp
+{
+
 template<typename T>
 using Chunk = arma::Cube<T>;
-
 
 class LinkInterface: public common::Log
 {
@@ -23,19 +24,14 @@ public:
         Log(logger), src_(src), dst_(dst), format_(format) {}
     virtual ~LinkInterface() {}
 
-    int link(Filter * src, Filter * dst)
+    void link(Filter * src, Filter * dst)
     {
-        int ret;
-        ret = src->add_output(*this);
-        common_die_zero(logger_, ret, -1, "failed to add link to src");
-
-        ret = dst->add_input(*this);
-        common_die_zero(logger_, ret, -2, "failed to add link to dst");
-
-        return 0;
+        src->add_output(*this);
+        dst->add_input(*this);
     }
 
     void eof_reached()  {eof_ = 1;}
+    void reset_eof()    {eof_ = 0;}
     bool eof() const    {return eof_;}
 
 
@@ -119,4 +115,4 @@ private:
     //Pad<T> * dst_pad_ = nullptr;
 };
 
-#endif /* LINK_H */
+} /* namespace dsp */

@@ -1,5 +1,5 @@
 #include <iostream>
-#include "correlate.h"
+#include "dsp/correlate.h"
 
 int main()
 {

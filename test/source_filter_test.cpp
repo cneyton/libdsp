@@ -27,7 +27,7 @@ int main(int argc, char * argv[])
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
     arma::SizeCube fmt(20, fmt_data.n_cols, fmt_data.n_slices);
-    pipeline.link<T>(source_filter, sink_filter, fmt);
+    pipeline.link<T>(*source_filter, *sink_filter, fmt);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"

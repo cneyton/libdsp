@@ -1,5 +1,5 @@
 #include <iostream>
-#include "interp.h"
+#include "dsp/interp.h"
 
 int main()
 {

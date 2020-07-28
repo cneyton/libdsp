@@ -1,5 +1,4 @@
-#ifndef PIPELINE_H
-#define PIPELINE_H
+#pragma once
 
 #include <condition_variable>
 #include <mutex>
@@ -10,6 +9,10 @@
 
 #include "filter.h"
 #include "link.h"
+#include "exception.h"
+
+namespace dsp
+{
 
 class Pipeline: public common::Log
 {
@@ -19,38 +22,39 @@ public:
         reset_stats();
     }
 
-    virtual ~Pipeline() {}
-
-    int run()
+    void reset()
     {
-        while (run_once()) { }
-        return 0;
+        for (auto& l: links_) {
+            l->reset_eof();
+        }
     }
 
-    int stop()
+    void run()
+    {
+        while (run_once()) { }
+    }
+
+    void stop()
     {
         {
             std::unique_lock<std::mutex> lk(mutex_);
             run_ = false;
         }
         cond_.notify_all();
-        return 0;
     }
 
-    int wakeup()
+    void wakeup()
     {
         {
             std::unique_lock<std::mutex> lk(mutex_);
         }
         cond_.notify_all();
-        return 0;
     }
 
-    int add_filter(std::unique_ptr<Filter> filter)
+    void add_filter(std::unique_ptr<Filter> filter)
     {
         filter->set_pipeline(this);
         filters_.push_back(std::move(filter));
-        return 0;
     }
 
     void print_stats()
@@ -68,13 +72,10 @@ public:
     }
 
     template<typename T>
-    int link(Filter * src, Filter * dst, arma::SizeCube& format)
+    void link(Filter& src, Filter& dst, arma::SizeCube& format)
     {
-        common_die_null(logger_, src, -1, "src nullptr");
-        common_die_null(logger_, dst, -2, "dst nullptr");
-
-        if (src->get_pipeline() != this || dst->get_pipeline() != this)
-            common_die(logger_, -3, "src or dst are not part of the pipeline");
+        if (src.get_pipeline() != this || dst.get_pipeline() != this)
+            throw pipeline_error("src or dst are not part of the pipeline");
 
         //if (src_pad_nb >= src->get_nb_input_pads() ||
             //dst_pad_nb >= dst->get_nb_output_pads())
@@ -85,9 +86,8 @@ public:
         //auto dst_pad = dst->get_pad(dst_pad_nb);
 
         // link
-        auto link = std::make_unique<Link<T>>(logger_, src, dst, format);
+        auto link = std::make_unique<Link<T>>(logger_, &src, &dst, format);
         links_.push_back(std::move(link));
-        return 0;
     }
 
 private:
@@ -110,6 +110,7 @@ private:
         stats_.n_execs++;
         stats_.durations.push_back(duration);
     }
+
     void reset_stats()
     {
         stats_.n_execs = 0;
@@ -120,7 +121,7 @@ private:
     std::chrono::duration<double> get_tot_exec_time() const
     {
         return std::accumulate(stats_.durations.begin(), stats_.durations.end(),
-                            std::chrono::duration<double>::zero());
+                               std::chrono::duration<double>::zero());
     }
 
     int run_once()
@@ -149,12 +150,11 @@ private:
         return 0;
     }
 
-    int wait()
+    void wait()
     {
         std::unique_lock<std::mutex> lk(mutex_);
         cond_.wait(lk);
-        return 0;
     }
 };
 
-#endif
+} /* namespace dsp */

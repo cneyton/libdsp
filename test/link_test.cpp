@@ -2,7 +2,7 @@
 
 #include "common/log.h"
 
-#include "link.h"
+#include "dsp/link.h"
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 common::Logger logger(spdlog::stdout_color_mt("dsp"));

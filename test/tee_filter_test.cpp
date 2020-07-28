@@ -5,10 +5,10 @@
 #include "common/log.h"
 #include "common/data.h"
 
-#include "tee_filter.h"
-#include "pipeline.h"
-#include "source_filter.h"
-#include "sink_filter.h"
+#include "dsp/tee_filter.h"
+#include "dsp/pipeline.h"
+#include "dsp/source_filter.h"
+#include "dsp/sink_filter.h"
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 common::Logger logger(spdlog::stdout_color_mt("dsp"));

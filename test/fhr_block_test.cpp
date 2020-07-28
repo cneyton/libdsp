@@ -1,9 +1,9 @@
 #include "test_utils.h"
 
-#include "iir_filter.h"
-#include "roll_filter.h"
-#include "buffer_filter.h"
-#include "fhr_filter.h"
+#include "dsp/iir_filter.h"
+#include "dsp/roll_filter.h"
+#include "dsp/buffer_filter.h"
+#include "dsp/fhr_filter.h"
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 
@@ -66,12 +66,12 @@ int main(int argc, char * argv[])
     auto sink_filter_1 = new NpySink<T>(logger, fmt_data);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
 
-    pipeline.link<T>(source_filter, buffer_filter, fmt_in);
-    pipeline.link<T>(buffer_filter, iir_filter, fmt_buffer);
-    pipeline.link<T>(iir_filter, roll_filter, fmt_buffer);
-    pipeline.link<T>(roll_filter, fhr_filter, fmt_roll);
-    pipeline.link<T>(fhr_filter, sink_filter_0, fmt_out);
-    pipeline.link<T>(fhr_filter, sink_filter_1, fmt_out);
+    pipeline.link<T>(*source_filter, *buffer_filter, fmt_in);
+    pipeline.link<T>(*buffer_filter, *iir_filter, fmt_buffer);
+    pipeline.link<T>(*iir_filter, *roll_filter, fmt_buffer);
+    pipeline.link<T>(*roll_filter, *fhr_filter, fmt_roll);
+    pipeline.link<T>(*fhr_filter, *sink_filter_0, fmt_out);
+    pipeline.link<T>(*fhr_filter, *sink_filter_1, fmt_out);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"

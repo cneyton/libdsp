@@ -1,5 +1,4 @@
-#ifndef FILTER_H
-#define FILTER_H
+#pragma once
 
 #include <chrono>
 #include <string>
@@ -9,6 +8,9 @@
 #include <armadillo>
 
 #include "common/log.h"
+
+namespace dsp
+{
 
 class LinkInterface;
 class Pipeline;
@@ -28,19 +30,18 @@ public:
 
     virtual ~Filter() {}
 
-    int add_input(LinkInterface& link)
+    void add_input(LinkInterface& link)
     {
         inputs_.push_back(&link);
-        return 0;
     }
 
-    int add_output(LinkInterface& link)
+    void add_output(LinkInterface& link)
     {
         outputs_.push_back(&link);
-        return 0;
     }
 
     virtual int activate() = 0;
+    //virtual void reset()   = 0;
 
     bool is_ready() const {return ready_;}
     void set_ready()      {ready_ = true;}
@@ -58,29 +59,33 @@ public:
 
     // debug methods -----------------------------------------------------------
     void set_verbose()    {verbose_ = true;}
+
     void update_stats(std::chrono::duration<double>& duration)
     {
         stats_.n_execs++;
         stats_.durations.push_back(duration);
     }
+
     void reset_stats()
     {
         stats_.n_execs = 0;
         stats_.durations.clear();
     }
+
     arma::uword get_n_execs() const {return stats_.n_execs;}
+
     std::chrono::duration<double> get_tot_exec_time() const
     {
         return std::accumulate(stats_.durations.begin(), stats_.durations.end(),
                             std::chrono::duration<double>::zero());
     }
+
     std::chrono::duration<double> get_mean_exec_time() const
     {
         if (stats_.n_execs == 0) return std::chrono::duration<double>::zero();
         else return get_tot_exec_time()/stats_.n_execs;
     }
     // -------------------------------------------------------------------------
-
 
 protected:
     std::string name_;
@@ -103,4 +108,4 @@ private:
     } stats_;
 };
 
-#endif /* FILTER_H */
+} /* namespace dsp */

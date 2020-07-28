@@ -1,5 +1,5 @@
 #include <iostream>
-#include "peaks.h"
+#include "dsp/peaks.h"
 
 int main()
 {

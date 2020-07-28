@@ -1,6 +1,6 @@
 #include "test_utils.h"
 
-#include "fhr_filter.h"
+#include "dsp/fhr_filter.h"
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 
@@ -46,9 +46,9 @@ int main(int argc, char * argv[])
     auto sink_filter_1 = new NpySink<T>(logger, fmt_data);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
 
-    pipeline.link<T>(source_filter, fhr_filter, fmt_in);
-    pipeline.link<T>(fhr_filter, sink_filter_0, fmt_out);
-    pipeline.link<T>(fhr_filter, sink_filter_1, fmt_out);
+    pipeline.link<T>(*source_filter, *fhr_filter, fmt_in);
+    pipeline.link<T>(*fhr_filter, *sink_filter_0, fmt_out);
+    pipeline.link<T>(*fhr_filter, *sink_filter_1, fmt_out);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"
