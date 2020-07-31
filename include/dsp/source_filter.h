@@ -29,15 +29,15 @@ public:
 
         std::vector<std::string> data;
         switch (data_handler_->pop_chunk(type_, format_.n_rows, data)) {
-        case 0: return 0;
-        case 1: break;
-        case 2: output->eof_reached(); return 1;
-        default:
-            throw filter_error("wrong enum, you should not be here");
-        }
-
-        if (!data_handler_->pop_chunk(type_, format_.n_rows, data)) {
-            return 0;
+            case 0: // not enought data
+                return 0;
+            case 1: // data retreived
+                break;
+            case 2: // eof
+                output->eof_reached();
+                return 1;
+            default:
+                throw filter_error("wrong enum, you should not be here");
         }
 
         auto chunk = std::make_shared<Chunk<T2>>(format_);
