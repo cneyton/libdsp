@@ -1,5 +1,4 @@
-#ifndef IIR_FILTER_H
-#define IIR_FILTER_H
+#pragma once
 
 #include <vector>
 #include <memory>
@@ -10,15 +9,16 @@
 #include "filter.h"
 #include "link.h"
 
-namespace filter
-{
+namespace dsp {
+namespace filter {
 
 template<typename T1, typename T2>
 class iir: public Filter
 {
 public:
     iir(common::Logger logger, uint16_t nb_filters, const arma::vec& b, const arma::vec& a):
-        Log(logger), Filter(logger, "iir"), b_(b), a_(a),
+        Filter(logger, "iir"),
+        b_(b), a_(a),
         filters_(std::vector<sp::IIR_filt<T1, T2, T1>>(nb_filters))
     {
         /* TODO: do this at link <25-03-20, cneyton> */
@@ -36,15 +36,16 @@ public:
     {
     }
 
-    virtual ~iir() {}
+    ~iir() = default;
 
-    virtual int activate()
+    int activate() override
     {
-        log_debug(logger_, "{} filter activated", this->name_);
+        log_debug(logger_, "{} filter activated", name_);
 
         auto input    = dynamic_cast<Link<T1>*>(inputs_.at(0));
         auto output   = dynamic_cast<Link<T1>*>(outputs_.at(0));
         auto chunk_in = std::make_shared<Chunk<T1>>();
+        //auto chunk_in = Link<T1>::elem_type;
 
         int ret;
         ret = input->pop(chunk_in);
@@ -78,7 +79,12 @@ public:
         return 1;
     }
 
-    virtual int negotiate_fmt()
+    void reset() override
+    {
+        /* TODO: todo <30-10-20, cneyton> */
+    }
+
+    int negotiate_fmt() // override
     {
         auto input   = dynamic_cast<Link<T1>*>(inputs_.at(0));
         auto output  = dynamic_cast<Link<T1>*>(outputs_.at(0));
@@ -117,5 +123,4 @@ private:
 };
 
 } /* namespace filter */
-
-#endif /* IIR_FILTER_H */
+} /* namespace dsp */

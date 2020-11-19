@@ -1,5 +1,4 @@
-#ifndef ROLL_FILTER_H
-#define ROLL_FILTER_H
+#pragma once
 
 #include <memory>
 #include <deque>
@@ -7,20 +6,27 @@
 #include "filter.h"
 #include "link.h"
 
-namespace filter
-{
+namespace dsp::filter {
 
+/**
+ * Roll filter: concatenate input chunks into larger output chunks with overlap
+ * Shared pointers to the input chunks are stored inside an internal queue until
+ * enough are present. The data is then copied to the output chunk. 'skip' chunk
+ * are then cleared.
+ * NB: fmt_out.n_rows must be a multiple of fmt_out.n_rows (format negotiation
+ * will fail otherwise)
+ */
 template<typename T>
 class roll: public Filter
 {
 public:
-    roll(common::Logger logger, arma::uword skip): Log(logger), Filter(logger, "roll"),
-        skip_(skip) {}
-    virtual ~roll() {}
+    roll(common::Logger logger, arma::uword skip):
+        Log(logger), Filter(logger, "roll"), skip_(skip) {}
+    ~roll() = default;
 
-    virtual int activate()
+    int activate() override
     {
-        log_debug(logger_, "{} filter activated", this->name_);
+        log_debug(logger_, "{} filter activated", name_);
 
         auto input    = dynamic_cast<Link<T>*>(inputs_.at(0));
         auto output   = dynamic_cast<Link<T>*>(outputs_.at(0));
@@ -62,7 +68,7 @@ public:
         return 1;
     }
 
-    virtual int negotiate_fmt()
+    int negotiate_fmt() // override
     {
         auto input   = dynamic_cast<Link<T>*>(inputs_.at(0));
         auto output  = dynamic_cast<Link<T>*>(outputs_.at(0));
@@ -87,7 +93,4 @@ private:
     arma::uword queue_size_;
 };
 
-} /* namespace filter */
-
-#endif /* end of include guard: ROLL_FILTER_H */
-
+} /* namespace dsp::filter */

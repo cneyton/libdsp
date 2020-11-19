@@ -1,5 +1,4 @@
-#ifndef BUFFER_FILTER_H
-#define BUFFER_FILTER_H
+#pragma once
 
 #include <memory>
 #include <deque>
@@ -7,19 +6,26 @@
 #include "filter.h"
 #include "link.h"
 
-namespace filter
-{
+namespace dsp::filter {
 
+/**
+ * Buffer filter: concatenate input chunks into larger output chunks
+ * Shared pointers to the input chunks are stored inside an internal queue until
+ * enough are present. The data is then copied to the output chunk and the queue
+ * is cleared. The remaining data is stored inside an internal chunk for the next
+ * output.
+ * NB: fmt_in.n_rows must be < fmt_out.n_rows (format negotiation will fail otherwise)
+ */
 template<typename T>
 class buffer: public Filter
 {
 public:
     buffer(common::Logger logger): Log(logger), Filter(logger, "buffer") {}
-    virtual ~buffer() {}
+    ~buffer() = default;
 
-    virtual int activate()
+    int activate() override
     {
-        log_debug(logger_, "{} filter activated", this->name_);
+        log_debug(logger_, "{} filter activated", name_);
 
         auto input    = dynamic_cast<Link<T>*>(inputs_.at(0));
         auto output   = dynamic_cast<Link<T>*>(outputs_.at(0));
@@ -71,7 +77,7 @@ public:
         return 1;
     }
 
-    virtual int negotiate_fmt()
+    int negotiate_fmt() // override
     {
         auto input   = dynamic_cast<Link<T>*>(inputs_.at(0));
         auto output  = dynamic_cast<Link<T>*>(outputs_.at(0));
@@ -96,6 +102,4 @@ private:
     std::deque<std::shared_ptr<Chunk<T>>> chunk_queue_;
 };
 
-} /* namespace filter */
-
-#endif /* BUFFER_FILTER_H */
+} /* namespace dsp::filter */

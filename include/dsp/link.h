@@ -9,26 +9,28 @@
 
 #include "common/log.h"
 
+#include "exception.h"
 #include "filter.h"
 
-namespace dsp
-{
+namespace dsp {
 
 template<typename T>
 using Chunk = arma::Cube<T>;
 
-class LinkInterface: public common::Log
+class LinkInterface
 {
 public:
-    LinkInterface(common::Logger logger, Filter * src, Filter * dst, arma::SizeCube& format):
-        Log(logger), src_(src), dst_(dst), format_(format) {}
-    virtual ~LinkInterface() {}
+    LinkInterface(Filter * src, Filter * dst, arma::SizeCube& format):
+        src_(src), dst_(dst), format_(format) {}
+    virtual ~LinkInterface() = default;
 
     void link(Filter * src, Filter * dst)
     {
-        src->add_output(*this);
-        dst->add_input(*this);
+        src->add_output(this);
+        dst->add_input(this);
     }
+
+    const arma::SizeCube& format()  const {return format_;}
 
     void eof_reached()  {eof_ = 1;}
     void reset_eof()    {eof_ = 0;}
@@ -52,31 +54,26 @@ struct Pad
 
 /* TODO: add a pool of chunk to avoid oom <01-04-20, cneyton> */
 template<typename T>
-class Link : public LinkInterface
+class Link: public LinkInterface
 {
 public:
-
     using elem_type = std::shared_ptr<Chunk<T>>;
 
-    Link(common::Logger logger, arma::SizeCube& format):
-        LinkInterface(logger, nullptr, nullptr, format) {}
-
-    Link(common::Logger logger, Filter * src, Filter * dst, arma::SizeCube& format):
-        LinkInterface(logger, src, dst, format)
+    Link(arma::SizeCube& format): LinkInterface(nullptr, nullptr, format) {}
+    Link(Filter * src, Filter * dst, arma::SizeCube& format): LinkInterface(src, dst, format)
     {
         link(src, dst);
     }
 
-    virtual ~Link() {}
+    virtual ~Link() = default;
 
     int push(elem_type chunk)
     {
         if (arma::size(*chunk) != format_)
-            common_die(logger_, -1, "invalid chunk format");
+            throw link_error("invalid chunk format");
 
         chunk_queue_.emplace_back(chunk);
 
-        common_die_null(logger_, dst_, -1, "dst nullptr");
         dst_->set_ready();
         return 0;
     }
@@ -84,7 +81,6 @@ public:
     int pop(elem_type& chunk)
     {
         if (chunk_queue_.empty()) {
-            common_die_null(logger_, src_, -1, "src nullptr");
             if (!eof_)
                 src_->set_ready();
             return 0;
@@ -104,10 +100,14 @@ public:
         chunk_queue_.pop_front();
     }
 
+    template<class... Args>
+    elem_type make_chunk(Args&&... args)
+    {
+        return std::make_shared<Chunk<T>>(std::forward<Args>(args)...);
+    }
+
     arma::uword  size() const {return chunk_queue_.size();}
     bool        empty() const {return chunk_queue_.empty();}
-
-    const arma::SizeCube& get_format()  const {return format_;}
 
 private:
     std::deque<elem_type> chunk_queue_;

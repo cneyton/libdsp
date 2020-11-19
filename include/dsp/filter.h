@@ -9,53 +9,54 @@
 
 #include "common/log.h"
 
-namespace dsp
-{
+namespace dsp {
 
 class LinkInterface;
 class Pipeline;
 
-class Filter: virtual public common::Log
+class Filter: public common::Log
 {
 public:
-    Filter(common::Logger logger): Log(logger)
+    Filter(common::Logger logger, std::string_view name): Log(logger), name_(name) {}
+    virtual ~Filter() = default;
+
+    void add_input(LinkInterface * link)
     {
-        reset_stats();
+        inputs_.push_back(link);
     }
 
-    Filter(common::Logger logger, std::string name): Filter(logger)
+    void add_output(LinkInterface * link)
     {
-        name_ = name;
+        outputs_.push_back(link);
     }
 
-    virtual ~Filter() {}
-
-    void add_input(LinkInterface& link)
-    {
-        inputs_.push_back(&link);
-    }
-
-    void add_output(LinkInterface& link)
-    {
-        outputs_.push_back(&link);
-    }
-
+    /**
+     * This method is called when something must be done in a filter. The
+     * definition of that something depends on the semantic of the filter.
+     *
+     * \return 1 if the filter was activated
+     *         0 if the filter wasn't activated
+     */
     virtual int activate() = 0;
-    //virtual void reset()   = 0;
 
-    bool is_ready() const {return ready_;}
-    void set_ready()      {ready_ = true;}
-    void reset_ready()    {ready_ = false;}
+    virtual void reset()   = 0;
 
-    bool is_source() const {return source_;}
+    /**
+     *
+     */
+    //virtual void set_format() = 0;
 
-    std::string get_name() const {return name_;}
+    bool is_ready() const noexcept {return ready_;}
+    void set_ready()      noexcept {ready_ = true;}
+    void reset_ready()    noexcept {ready_ = false;}
 
-    Pipeline * get_pipeline() const {return pipeline_;}
+    std::string name() const {return name_;}
+
+    Pipeline * pipeline() const {return pipeline_;}
     void       set_pipeline(Pipeline * p) {pipeline_ = p;}
 
-    //uint get_nb_input_pads()  const {return input_pads_.size();}
-    //uint get_nb_output_pads() const {return output_pads.size();}
+    //size_t n_input_pads()  const {return input_pads_.size();}
+    //size_t n_output_pads() const {return output_pads.size();}
 
     // debug methods -----------------------------------------------------------
     void set_verbose()    {verbose_ = true;}
@@ -72,18 +73,18 @@ public:
         stats_.durations.clear();
     }
 
-    arma::uword get_n_execs() const {return stats_.n_execs;}
+    arma::uword n_execs() const {return stats_.n_execs;}
 
-    std::chrono::duration<double> get_tot_exec_time() const
+    std::chrono::duration<double> total_exec_time() const
     {
         return std::accumulate(stats_.durations.begin(), stats_.durations.end(),
                             std::chrono::duration<double>::zero());
     }
 
-    std::chrono::duration<double> get_mean_exec_time() const
+    std::chrono::duration<double> mean_exec_time() const
     {
         if (stats_.n_execs == 0) return std::chrono::duration<double>::zero();
-        else return get_tot_exec_time()/stats_.n_execs;
+        else return total_exec_time()/stats_.n_execs;
     }
     // -------------------------------------------------------------------------
 
@@ -98,12 +99,12 @@ protected:
 
     bool ready_   = false;
     bool verbose_ = false;
-    bool source_  = false;
 
 private:
-    struct stats
+    struct
     {
-        arma::uword n_execs;
+        arma::uword n_execs = 0;
+        /* TODO: replace w/ vector <23-10-20, cneyton> */
         std::deque<std::chrono::duration<double>> durations;
     } stats_;
 };

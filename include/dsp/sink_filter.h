@@ -3,16 +3,15 @@
 #include "filter.h"
 #include "link.h"
 
-namespace dsp::filter
-{
+namespace dsp::filter {
 
 template<typename T>
 class sink: public Filter
 {
 public:
-    sink(common::Logger logger): common::Log(logger), Filter(logger, "sink") {}
+    sink(common::Logger logger): Filter(logger, "sink") {}
 
-    virtual int activate()
+    int activate() override
     {
         log_debug(logger_, "{} filter activated", name_);
 
@@ -25,6 +24,11 @@ public:
         if (verbose_)
             chunk->print();
         return 1;
+    }
+
+    void reset() override
+    {
+        // do nothing
     }
 };
 
