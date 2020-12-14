@@ -1,9 +1,6 @@
 #include "test_utils.h"
 
-#include "dsp/iir_filter.h"
-#include "dsp/roll_filter.h"
 #include "dsp/buffer_filter.h"
-#include "dsp/fhr_filter.h"
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 
@@ -33,14 +30,14 @@ int main(int argc, char * argv[])
     arma::SizeCube fmt_in(1, fmt_data.n_cols, fmt_data.n_slices);
 
     arma::SizeCube fmt_out(n_buffer, fmt_in.n_cols, fmt_in.n_slices);
-    auto buffer_filter = new filter::buffer<T>(logger);
+    auto buffer_filter = new filter::Buffer<T>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(buffer_filter));
 
     auto sink_filter = new NpySink<T>(logger, fmt_data);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
-    pipeline.link<T>(*source_filter, *buffer_filter, fmt_in);
-    pipeline.link<T>(*buffer_filter, *sink_filter, fmt_out);
+    pipeline.link<T>(source_filter, buffer_filter, fmt_in);
+    pipeline.link<T>(buffer_filter, sink_filter, fmt_out);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"

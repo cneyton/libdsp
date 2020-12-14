@@ -17,12 +17,11 @@ namespace dsp::filter {
  * will fail otherwise)
  */
 template<typename T>
-class roll: public Filter
+class Roll: public Filter
 {
 public:
-    roll(common::Logger logger, arma::uword skip):
-        Log(logger), Filter(logger, "roll"), skip_(skip) {}
-    ~roll() = default;
+    Roll(common::Logger logger, arma::uword skip):
+        Filter(logger, "roll"), skip_(skip) {}
 
     int activate() override
     {
@@ -32,10 +31,7 @@ public:
         auto output   = dynamic_cast<Link<T>*>(outputs_.at(0));
         auto chunk_in = std::make_shared<Chunk<T>>();
 
-        int ret;
-        ret = input->pop(chunk_in);
-        common_die_zero(logger_, ret, -1, "failed to pop chunk");
-        if (!ret) {
+        if (!input->pop(chunk_in)) {
             if (input->eof())
                 output->eof_reached();
             return 0;
@@ -44,8 +40,8 @@ public:
         chunk_queue_.push_back(chunk_in);
         i_++;
 
-        auto fmt_in  = input->get_format();
-        auto fmt_out = output->get_format();
+        auto fmt_in  = input->format();
+        auto fmt_out = output->format();
 
         /* TODO: replace by queue_size_ when fmt negotatiation is done <23-03-20, cneyton> */
         arma::uword queue_size = fmt_out.n_rows / fmt_in.n_rows;
@@ -68,12 +64,18 @@ public:
         return 1;
     }
 
+    void reset() override
+    {
+        i_ = 0;
+        chunk_queue_.clear();
+    }
+
     int negotiate_fmt() // override
     {
         auto input   = dynamic_cast<Link<T>*>(inputs_.at(0));
         auto output  = dynamic_cast<Link<T>*>(outputs_.at(0));
-        auto fmt_in  = input->get_format();
-        auto fmt_out = output->get_format();
+        auto fmt_in  = input->format();
+        auto fmt_out = output->format();
 
         if (fmt_in.n_cols != fmt_out.n_cols || fmt_in.n_slices != fmt_out.n_slices)
             return 0;

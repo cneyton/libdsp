@@ -17,11 +17,10 @@ namespace dsp::filter {
  * NB: fmt_in.n_rows must be < fmt_out.n_rows (format negotiation will fail otherwise)
  */
 template<typename T>
-class buffer: public Filter
+class Buffer: public Filter
 {
 public:
-    buffer(common::Logger logger): Log(logger), Filter(logger, "buffer") {}
-    ~buffer() = default;
+    Buffer(common::Logger logger): Filter(logger, "buffer") {}
 
     int activate() override
     {
@@ -31,18 +30,15 @@ public:
         auto output   = dynamic_cast<Link<T>*>(outputs_.at(0));
         auto chunk_in = std::make_shared<Chunk<T>>();
 
-        int ret;
-        ret = input->pop(chunk_in);
-        common_die_zero(logger_, ret, -1, "failed to pop chunk");
-        if (!ret) {
+        if (!input->pop(chunk_in)) {
             if (input->eof())
                 output->eof_reached();
             return 0;
         }
         chunk_queue_.push_back(chunk_in);
 
-        auto fmt_in  = input->get_format();
-        auto fmt_out = output->get_format();
+        auto fmt_in  = input->format();
+        auto fmt_out = output->format();
 
         i_++;
         if (n_intern_ + fmt_in.n_rows * i_ < fmt_out.n_rows)
@@ -56,25 +52,32 @@ public:
         if (n_intern_ != 0) {
             chunk_out->rows(0, n_intern_ - 1) = chunk_intern_.rows(0, n_intern_ - 1);
         }
-        arma::uword start = n_intern_;
-        arma::uword end   = start;
+        arma::uword beg = n_intern_;
+        arma::uword end = beg;
         n_intern_ = 0;
         for (auto it = chunk_queue_.cbegin(); it < chunk_queue_.cend(); ++it) {
             end += (*it)->n_rows;
             if (end > fmt_out.n_rows) {
                 n_intern_ = end - fmt_out.n_rows;
                 end = fmt_in.n_rows - n_intern_;
-                chunk_out->rows(start, fmt_out.n_rows - 1) = (*it)->rows(0, end - 1);
+                chunk_out->rows(beg, fmt_out.n_rows - 1) = (*it)->rows(0, end - 1);
                 chunk_intern_.rows(0, n_intern_ - 1) = (*it)->rows(end, fmt_in.n_rows - 1);
             } else {
-                chunk_out->rows(start, end - 1) = **it;
-                start = end;
+                chunk_out->rows(beg, end - 1) = **it;
+                beg = end;
             }
         }
         chunk_queue_.clear();
 
         output->push(chunk_out);
         return 1;
+    }
+
+    void reset() override
+    {
+        i_ = 0;
+        n_intern_ = 0;
+        chunk_queue_.clear();
     }
 
     int negotiate_fmt() // override

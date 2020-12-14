@@ -55,29 +55,29 @@ int main(int argc, char * argv[])
     auto fmt_data = source_filter->get_fmt();
     arma::SizeCube fmt_in(nskip, fmt_data.n_cols, fmt_data.n_slices);
 
-    auto iir_filter_iq = new filter::iir<T_iq, double>(logger, fmt_in.n_cols * fmt_in.n_slices, b1, a1);
+    auto iir_filter_iq = new filter::IIR<T_iq, double>(logger, fmt_in.n_cols * fmt_in.n_slices, b1, a1);
     pipeline.add_filter(std::unique_ptr<Filter>(iir_filter_iq));
 
     arma::SizeCube fmt_roll_iq(nfft, fmt_in.n_cols, fmt_in.n_slices);
-    auto roll_filter_iq = new filter::roll<T_iq>(logger, 1);
+    auto roll_filter_iq = new filter::Roll<T_iq>(logger, 1);
     pipeline.add_filter(std::unique_ptr<Filter>(roll_filter_iq));
 
     arma::SizeCube fmt_fd(1, fmt_in.n_cols, fmt_in.n_slices);
-    auto fd_filter = new filter::fd<T_iq, T_fd>(logger, nfft, arma::vec(nfft, arma::fill::ones));
+    auto fd_filter = new filter::FD<T_iq, T_fd>(logger, nfft, arma::vec(nfft, arma::fill::ones));
     pipeline.add_filter(std::unique_ptr<Filter>(fd_filter));
 
     arma::SizeCube fmt_buffer(fdskip, fmt_in.n_cols, fmt_in.n_slices);
-    auto buffer_filter = new filter::buffer<T_fd>(logger);
+    auto buffer_filter = new filter::Buffer<T_fd>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(buffer_filter));
 
-    auto iir_filter_fd = new filter::iir<T_fd, double>(logger, fmt_in.n_cols * fmt_in.n_slices, b2, a2);
+    auto iir_filter_fd = new filter::IIR<T_fd, double>(logger, fmt_in.n_cols * fmt_in.n_slices, b2, a2);
     pipeline.add_filter(std::unique_ptr<Filter>(iir_filter_fd));
 
     arma::SizeCube fmt_roll_fd(fdperseg, fmt_in.n_cols, fmt_in.n_slices);
-    auto roll_filter = new filter::roll<T_fd>(logger, 1);
+    auto roll_filter = new filter::Roll<T_fd>(logger, 1);
     pipeline.add_filter(std::unique_ptr<Filter>(roll_filter));
 
-    auto fhr_filter = new filter::fhr<T_fd, T_fd, T_fd>(logger, radius, period_max, threshold);
+    auto fhr_filter = new filter::FHR<T_fd, T_fd, T_fd>(logger, radius, period_max, threshold);
     pipeline.add_filter(std::unique_ptr<Filter>(fhr_filter));
 
     arma::SizeCube fmt_out(1, fmt_in.n_cols, fmt_in.n_slices);
@@ -87,15 +87,15 @@ int main(int argc, char * argv[])
     auto sink_filter_1 = new NpySink<T_fd>(logger, fmt_data);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
 
-    pipeline.link<T_iq>(*source_filter, *iir_filter_iq, fmt_in);
-    pipeline.link<T_iq>(*iir_filter_iq, *roll_filter_iq, fmt_in);
-    pipeline.link<T_iq>(*roll_filter_iq, *fd_filter, fmt_roll_iq);
-    pipeline.link<T_fd>(*fd_filter, *buffer_filter, fmt_fd);
-    pipeline.link<T_fd>(*buffer_filter, *iir_filter_fd, fmt_buffer);
-    pipeline.link<T_fd>(*iir_filter_fd, *roll_filter, fmt_buffer);
-    pipeline.link<T_fd>(*roll_filter, *fhr_filter, fmt_roll_fd);
-    pipeline.link<T_fd>(*fhr_filter, *sink_filter_0, fmt_out);
-    pipeline.link<T_fd>(*fhr_filter, *sink_filter_1, fmt_out);
+    pipeline.link<T_iq>(source_filter  , iir_filter_iq  , fmt_in);
+    pipeline.link<T_iq>(iir_filter_iq  , roll_filter_iq , fmt_in);
+    pipeline.link<T_iq>(roll_filter_iq , fd_filter      , fmt_roll_iq);
+    pipeline.link<T_fd>(fd_filter      , buffer_filter  , fmt_fd);
+    pipeline.link<T_fd>(buffer_filter  , iir_filter_fd  , fmt_buffer);
+    pipeline.link<T_fd>(iir_filter_fd  , roll_filter    , fmt_buffer);
+    pipeline.link<T_fd>(roll_filter    , fhr_filter     , fmt_roll_fd);
+    pipeline.link<T_fd>(fhr_filter     , sink_filter_0  , fmt_out);
+    pipeline.link<T_fd>(fhr_filter     , sink_filter_1  , fmt_out);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T_iq).name() << "\n"

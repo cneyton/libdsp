@@ -25,10 +25,10 @@ struct SourceItfc
 namespace filter {
 
 template<typename T1, typename T2>
-class source: public Filter, public SourceItfc
+class Source: public Filter, public SourceItfc
 {
 public:
-    source(common::Logger logger, std::string_view name, arma::SizeCube& fmt):
+    Source(common::Logger logger, std::string_view name, arma::SizeCube& fmt):
         Filter(logger, name),
         format_(fmt),
         expected_frame_size_(expected_frame_size())
@@ -124,7 +124,7 @@ private:
 
 template<typename T1, typename T2>
 inline
-void source<T1, T2>::fill_frame(std::string_view buf, const arma::uword frame_nb)
+void Source<T1, T2>::fill_frame(std::string_view buf, const arma::uword frame_nb)
 {
     auto it = buf.cbegin();
     arma::uword j = 0, k = 0;
@@ -141,7 +141,7 @@ void source<T1, T2>::fill_frame(std::string_view buf, const arma::uword frame_nb
 
 template<>
 inline
-void source<IQ<int16_t>, arma::cx_double>::fill_frame(std::string_view buf,
+void Source<IQ<int16_t>, arma::cx_double>::fill_frame(std::string_view buf,
                                                       const arma::uword frame_nb)
 {
     auto it = buf.cbegin();
@@ -159,7 +159,7 @@ void source<IQ<int16_t>, arma::cx_double>::fill_frame(std::string_view buf,
 
 template<>
 inline
-void source<IQ<int16_t>, arma::cx_float>::fill_frame(std::string_view buf,
+void Source<IQ<int16_t>, arma::cx_float>::fill_frame(std::string_view buf,
                                                      const arma::uword frame_nb)
 {
     auto it = buf.cbegin();

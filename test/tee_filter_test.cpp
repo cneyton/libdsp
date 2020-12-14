@@ -1,108 +1,54 @@
-#include <thread>
-#include <chrono>
-#include <random>
-
-#include "common/log.h"
-#include "common/data.h"
+#include "test_utils.h"
 
 #include "dsp/tee_filter.h"
-#include "dsp/pipeline.h"
-#include "dsp/source_filter.h"
-#include "dsp/sink_filter.h"
 
+#include "spdlog/common.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
-common::Logger logger(spdlog::stdout_color_mt("dsp"));
 
-using iT = double;
-using oT = double;
+using T = double;
 
-constexpr uint16_t nb_samples = 36;
-constexpr uint16_t nb_slots   = 7;
 constexpr uint16_t nb_frames  = 1;
-constexpr size_t   elt_size   = nb_samples * nb_slots * sizeof(iT);
-constexpr uint     nb_tot_frames = 10000;
-constexpr uint     period = 1;
 constexpr uint     N = 2;
 
-class Handler: public common::data::Handler
+int main(int argc, char * argv[])
 {
-public:
-    Handler(common::Logger logger, Pipeline * pipeline):
-        common::data::Handler(logger), pipeline_(pipeline) {}
-    virtual ~Handler() {}
+    if (argc != 4)
+        return -1;
 
-    virtual int data_pushed()
-    {
-        pipeline_->wakeup();
-        return 0;
-    }
+    std::string filename_in(argv[1]);
+    std::string filename_out(argv[2]);
 
-private:
-    Pipeline * pipeline_;
-};
-
-void producer_th_func(common::data::Producer& p)
-{
-    std::random_device rd;
-    std::uniform_int_distribution dist(0, 254);
-    for (uint i = 0; i < nb_tot_frames; i++) {
-        common::data::ByteBuffer buf(elt_size, 1);
-        std::transform(buf.begin(), buf.end(), buf.begin(),
-                       [&](int x){return x * static_cast<uint8_t>(dist(rd));});
-        p.push(common::data::type::us, buf);
-        std::this_thread::sleep_for(std::chrono::milliseconds(period));
-    }
-}
-
-void pipeline_th_func(Pipeline& pipeline)
-{
-    pipeline.run();
-}
-
-int main()
-{
-    std::cout << "Input:\n"
-              << "   type: " << typeid(iT).name() << "\n"
-              << "   chunk size: (" << nb_frames  << "," << nb_samples << "," << nb_slots << ")\n"
-              << "   nb frames: " << nb_tot_frames << "\n"
-              << "------------------------------\n";
-
+    common::Logger logger(spdlog::stdout_color_mt("dsp"));
     logger->set_level(spdlog::level::info);
 
     Pipeline pipeline(logger);
-    Handler data_handler(logger, &pipeline);
-    common::data::Producer producer(logger, &data_handler);
 
-    auto fmt = arma::SizeCube(nb_frames, nb_samples, nb_slots);
-    auto source_filter = new filter::source<iT, oT>(logger, &data_handler, common::data::type::us);
-    source_filter->set_chunk_size(nb_frames, nb_samples, nb_slots);
+    auto source_filter = new NpySource<T>(logger, filename_in);
     pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
+    auto fmt_data = source_filter->get_fmt();
+    arma::SizeCube fmt(nb_frames, fmt_data.n_cols, fmt_data.n_slices);
 
-    auto sink_filter_1 = new filter::sink<double>(logger);
+    auto sink_filter_0 = new NpySink<T>(logger, fmt_data);
+    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_0));
+
+    auto sink_filter_1 = new NpySink<T>(logger, fmt_data);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
 
-    auto sink_filter_2 = new filter::sink<double>(logger);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_2));
-
-    auto tee_filter = new filter::tee<oT, N>(logger);
+    auto tee_filter = new filter::Tee<T, N>(logger);
     pipeline.add_filter(std::unique_ptr<Filter>(tee_filter));
 
-    std::cout << "Filter params:\n"
-              << "   N: " << N << "\n"
+    pipeline.link<T>(source_filter, tee_filter, fmt);
+    pipeline.link<T>(tee_filter   , sink_filter_0, fmt);
+    pipeline.link<T>(tee_filter   , sink_filter_1, fmt);
+
+    std::cout << "Input:\n"
+              << "  type: " << typeid(T).name() << "\n"
+              << "  chunk size: (" << fmt.n_rows << "," << fmt.n_cols << "," << fmt.n_slices << ")\n"
+              << "  nb frames total: " << fmt_data.n_rows << "\n"
               << "------------------------------\n";
 
-    pipeline.link<iT>(source_filter, tee_filter, fmt);
-    pipeline.link<oT>(tee_filter, sink_filter_1, fmt);
-    pipeline.link<oT>(tee_filter, sink_filter_2, fmt);
-
-    data_handler.reinit_queue(common::data::type::us, elt_size, 1000);
-
-    std::thread pipeline_th(pipeline_th_func, std::ref(pipeline));
-    std::thread producer_th(producer_th_func, std::ref(producer));
-
-    producer_th.join();
-    pipeline.stop();
-    pipeline_th.join();
+    sink_filter_0->dump("out_1_" + filename_out);
+    sink_filter_1->dump("out_2_" + filename_out);
 
     pipeline.print_stats();
 

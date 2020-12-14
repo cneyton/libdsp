@@ -29,15 +29,15 @@ int main(int argc, char * argv[])
     auto fmt_data = source_filter->get_fmt();
     arma::SizeCube fmt_in(nfft, fmt_data.n_cols, fmt_data.n_slices);
 
-    auto fd_filter = new filter::fd<T, double>(logger, nfft, arma::vec(nfft, arma::fill::ones));
+    auto fd_filter = new filter::FD<T, double>(logger, nfft, arma::vec(nfft, arma::fill::ones));
     pipeline.add_filter(std::unique_ptr<Filter>(fd_filter));
 
     arma::SizeCube fmt_out(1, fmt_in.n_cols, fmt_in.n_slices);
     auto sink_filter = new NpySink<double>(logger, fmt_data);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
 
-    pipeline.link<T>(*source_filter, *fd_filter, fmt_in);
-    pipeline.link<double>(*fd_filter, *sink_filter, fmt_out);
+    pipeline.link<T>(source_filter, fd_filter, fmt_in);
+    pipeline.link<double>(fd_filter, sink_filter, fmt_out);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"

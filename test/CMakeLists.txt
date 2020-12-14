@@ -2,15 +2,15 @@ set(files
     correlate_test.cpp
     peaks_test.cpp
     interp_test.cpp
-    #link_test.cpp
+    link_test.cpp
     source_filter_test.cpp
     iir_filter_test.cpp
     #fft_filter_test.cpp
     fd_filter_test.cpp
     fhr_filter_test.cpp
     buffer_filter_test.cpp
-    #roll_filter_test.cpp
-    #tee_filter_test.cpp
+    roll_filter_test.cpp
+    tee_filter_test.cpp
     fd_block_test.cpp
     fhr_block_test.cpp
     full_pipeline_test.cpp

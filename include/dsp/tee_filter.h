@@ -1,40 +1,43 @@
-#ifndef TEE_FILTER_H
-#define TEE_FILTER_H
+#pragma once
 
 #include "filter.h"
 #include "link.h"
 
-namespace filter
-{
+namespace dsp::filter {
 
 template<typename T, arma::uword N>
-class tee: public Filter
+class Tee: public Filter
 {
 public:
-    tee(common::Logger logger): Log(logger), Filter(logger, "tee") {}
-    virtual ~tee() {}
+    Tee(common::Logger logger): Filter(logger, "tee") {}
 
-    virtual int activate()
+    int activate() override
     {
         log_debug(logger_, "filter {} activated", this->name_);
-        auto input  = dynamic_cast<Link<T>*>(inputs_.at(0));
-        if (input->empty()) return 0;
+        auto input    = dynamic_cast<Link<T>*>(inputs_.at(0));
+        auto chunk_in = std::make_shared<Chunk<T>>();
 
-        int ret;
-        auto in_chunk = std::make_shared<Chunk<T>>();
-        ret = input->front(in_chunk);
-        common_die_zero(logger_, ret, -1, "failed to get front");
-        ret = input->pop();
-        common_die_zero(logger_, ret, -2, "failed to pop link");
+        if (!input->pop(chunk_in)) {
+            if (input->eof()) {
+                for (arma::uword i = 0; i < N; ++i) {
+                    auto output = dynamic_cast<Link<T>*>(outputs_.at(i));
+                    output->eof_reached();
+                }
+            }
+            return 0;
+        }
+
         for (arma::uword i = 0; i < N; ++i) {
             auto output = dynamic_cast<Link<T>*>(outputs_.at(i));
-            output->push(in_chunk);
+            output->push(chunk_in);
         }
         return 1;
     }
-private:
+
+    void reset() override
+    {
+        // nothing to do
+    }
 };
 
-} /* namespace filter */
-
-#endif /* TEE_FILTER_H */
+} /* namespace dsp::filter */

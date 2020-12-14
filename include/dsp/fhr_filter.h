@@ -1,5 +1,4 @@
-#ifndef FHR_FILTER_H
-#define FHR_FILTER_H
+#pragma once
 
 #include "link.h"
 #include "filter.h"
@@ -7,33 +6,28 @@
 #include "peaks.h"
 #include "interp.h"
 
-namespace filter
-{
+namespace dsp::filter {
 
 template<typename T1 = double, typename T2 = double, typename T3 = T2>
-class fhr: public Filter
+class FHR: public Filter
 {
 public:
-    fhr(common::Logger logger, arma::uword radius, arma::uword period_max, T3 threshold):
-        Log(logger), Filter(logger, "fhr"), radius_(radius), period_max_(period_max),
-        threshold_(threshold)
+    FHR(common::Logger logger, arma::uword radius, arma::uword period_max, T3 threshold):
+        Filter(logger, "fhr"),
+        radius_(radius), period_max_(period_max), threshold_(threshold)
     {
     }
-    virtual ~fhr() {}
 
-    virtual int activate()
+    int activate() override
     {
-        log_debug(logger_, "fhr filter {} activated", this->name_);
+        log_debug(logger_, "fhr filter {} activated", name_);
 
         auto input      = dynamic_cast<Link<T1>*>(inputs_.at(0));
         auto output_fhr = dynamic_cast<Link<T2>*>(outputs_.at(0));
         auto output_cor = dynamic_cast<Link<T3>*>(outputs_.at(1));
         auto chunk_in   = std::make_shared<Chunk<T1>>();
 
-        int ret;
-        ret = input->pop(chunk_in);
-        common_die_zero(logger_, ret, -1, "failed to pop chunk");
-        if (!ret) {
+        if (!input->pop(chunk_in)) {
             if (input->eof()) {
                 output_fhr->eof_reached();
                 output_cor->eof_reached();
@@ -41,8 +35,8 @@ public:
             return 0;
         }
 
-        auto fmt_in    = input->get_format();
-        auto fmt_out   = output_fhr->get_format();
+        auto fmt_in    = input->format();
+        auto fmt_out   = output_fhr->format();
 
         auto chunk_fhr = std::make_shared<Chunk<T2>>(fmt_out);
         auto chunk_cor = std::make_shared<Chunk<T3>>(fmt_out);
@@ -96,12 +90,15 @@ public:
         return 1;
     }
 
+    void reset() override
+    {
+        // nothing to do
+    }
+
 private:
     arma::uword  radius_;
     arma::uword  period_max_;
     T3           threshold_;
 };
 
-} /* namespace filter */
-
-#endif /* FHR_FILTER_H */
+} /* namespace dsp::filter */

@@ -1,19 +1,17 @@
-#ifndef FD_FILTER_H
-#define FD_FILTER_H
+#pragma once
 
 #include "sigpack.h"
 #include "filter.h"
 #include "link.h"
 
-namespace filter
-{
+namespace dsp::filter {
 
 template<typename T1 = arma::cx_double, typename T2 = double>
-class fd: public Filter
+class FD: public Filter
 {
 public:
-    fd(common::Logger logger, arma::uword nfft, arma::vec window):
-        Log(logger), Filter(logger, "fd"), nfft_(nfft),
+    FD(common::Logger logger, arma::uword nfft, arma::vec window):
+        Filter(logger, "fd"), nfft_(nfft),
         fftw_(sp::FFTW(nfft, FFTW_MEASURE)), window_(window)
     {
         /* TODO: do this at link  <14-02-20, cneyton> */
@@ -22,27 +20,22 @@ public:
         fftw_.fft_cx(in_, in_);
     }
 
-    virtual ~fd() {}
-
-    virtual int activate()
+    int activate() override
     {
-        log_debug(logger_, "{} filter activated", this->name_);
+        log_debug(logger_, "{} filter activated", name_);
 
         auto input    = dynamic_cast<Link<T1>*>(inputs_.at(0));
         auto output   = dynamic_cast<Link<T2>*>(outputs_.at(0));
         auto chunk_in = std::make_shared<Chunk<T1>>();
 
-        int ret;
-        ret = input->pop(chunk_in);
-        common_die_zero(logger_, ret, -1, "failed to pop chunk");
-        if (!ret) {
+        if (!input->pop(chunk_in)) {
             if (input->eof())
                 output->eof_reached();
             return 0;
         }
 
-        auto fmt_in    = input->get_format();
-        auto fmt_out   = output->get_format();
+        auto fmt_in    = input->format();
+        auto fmt_out   = output->format();
         auto chunk_out = std::make_shared<Chunk<T2>>(fmt_out);
 
         /* TODO: add zero padding and windowing  <26-03-20, cneyton> */
@@ -71,7 +64,11 @@ public:
         return 1;
     }
 
-    virtual int negotiate_fmt()
+    void reset() override
+    {
+    }
+
+    int negotiate_fmt() // override
     {
         auto input   = dynamic_cast<Link<T1>*>(inputs_.at(0));
         auto output  = dynamic_cast<Link<T2>*>(outputs_.at(0));
@@ -98,6 +95,4 @@ private:
     arma::Col<T1>   in_;
 };
 
-} /* namespace filter */
-
-#endif /* FD_FILTER_H */
+} /* namespace dsp::filter */

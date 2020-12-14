@@ -37,7 +37,7 @@ int main(int argc, char * argv[])
     arma::SizeCube fmt_in(fdperseg, fmt_data.n_cols, fmt_data.n_slices);
 
     arma::SizeCube fmt_out(1, fmt_in.n_cols, fmt_in.n_slices);
-    auto fhr_filter = new filter::fhr<T, T, T>(logger, radius, period_max, threshold);
+    auto fhr_filter = new filter::FHR<T, T, T>(logger, radius, period_max, threshold);
     pipeline.add_filter(std::unique_ptr<Filter>(fhr_filter));
 
     auto sink_filter_0 = new NpySink<T>(logger, fmt_data);
@@ -46,9 +46,9 @@ int main(int argc, char * argv[])
     auto sink_filter_1 = new NpySink<T>(logger, fmt_data);
     pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
 
-    pipeline.link<T>(*source_filter, *fhr_filter, fmt_in);
-    pipeline.link<T>(*fhr_filter, *sink_filter_0, fmt_out);
-    pipeline.link<T>(*fhr_filter, *sink_filter_1, fmt_out);
+    pipeline.link<T>(source_filter, fhr_filter   , fmt_in);
+    pipeline.link<T>(fhr_filter   , sink_filter_0, fmt_out);
+    pipeline.link<T>(fhr_filter   , sink_filter_1, fmt_out);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"
