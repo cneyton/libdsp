@@ -13,10 +13,10 @@ namespace dsp {
 namespace filter {
 
 template<typename T1, typename T2>
-class iir: public Filter
+class IIR: public Filter
 {
 public:
-    iir(common::Logger logger, uint16_t nb_filters, const arma::vec& b, const arma::vec& a):
+    IIR(common::Logger logger, uint16_t nb_filters, const arma::vec& b, const arma::vec& a):
         Filter(logger, "iir"),
         b_(b), a_(a),
         filters_(std::vector<sp::IIR_filt<T1, T2, T1>>(nb_filters))
@@ -29,14 +29,12 @@ public:
         //output_pads.push_back(output_pad_0);
     }
 
-    iir(common::Logger logger, uint16_t nb_filters):
-        iir(logger, nb_filters,
+    IIR(common::Logger logger, uint16_t nb_filters):
+        IIR(logger, nb_filters,
             arma::Col<T2>(1, arma::fill::ones),
             arma::Col<T2>(1, arma::fill::ones))
     {
     }
-
-    ~iir() = default;
 
     int activate() override
     {
@@ -45,18 +43,14 @@ public:
         auto input    = dynamic_cast<Link<T1>*>(inputs_.at(0));
         auto output   = dynamic_cast<Link<T1>*>(outputs_.at(0));
         auto chunk_in = std::make_shared<Chunk<T1>>();
-        //auto chunk_in = Link<T1>::elem_type;
 
-        int ret;
-        ret = input->pop(chunk_in);
-        common_die_zero(logger_, ret, -1, "failed to pop chunk");
-        if (!ret) {
+        if (!input->pop(chunk_in)) {
             if (input->eof())
                 output->eof_reached();
             return 0;
         }
 
-        auto size = arma::size(*chunk_in);
+        auto size = output->format();
         auto chunk_out = std::make_shared<Chunk<T1>>(size);
         uint n = 0;
         for (uint k = 0; k < size.n_slices; k++) {
@@ -102,10 +96,9 @@ public:
         return 1;
     }
 
-    virtual int clear()
+    void clear()
     {
         std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.clear();});
-        return 1;
     }
 
 private:
