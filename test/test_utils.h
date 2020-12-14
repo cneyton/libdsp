@@ -1,9 +1,6 @@
-#include <memory>
-#include <thread>
 #include <cnpy.h>
 
 #include "common/log.h"
-#include "common/data.h"
 
 #include "dsp/pipeline.h"
 #include "dsp/source_filter.h"
@@ -11,80 +8,13 @@
 
 using namespace dsp;
 
-class Handler: public common::data::Handler
-{
-public:
-    Handler(common::Logger logger, Pipeline * pipeline):
-        common::data::Handler(logger), pipeline_(pipeline) {}
-    virtual ~Handler() {}
-
-    virtual int data_pushed()
-    {
-        return 0;
-    }
-
-    virtual int eof()
-    {
-        return 0;
-    }
-
-private:
-    Pipeline * pipeline_;
-};
-
-//template<typename T>
-//class Producer: public common::data::Producer
-//{
-//public:
-    //Producer(common::Logger logger, common::data::Handler * h, std::string filename,
-             //arma::uword period=1, arma::uword queue_size=1000):
-        //Log(logger), common::data::Producer(logger, h), filename_(filename),
-        //period_(period), queue_size_(queue_size)
-    //{
-        //cnpy::NpyArray np_array = cnpy::npy_load(filename_);
-        //arma::uword n_rows   = np_array.shape.at(2);
-        //arma::uword n_cols   = np_array.shape.at(1);
-        //arma::uword n_slices = np_array.shape.at(0);
-
-        //data_ = arma::Cube<T>(np_array.data<T>(), n_rows, n_cols, n_slices);
-    //}
-
-    //virtual ~Producer() {}
-
-    //void run()
-    //{
-        //size_t row_size = data_.n_cols * data_.n_slices * sizeof(T);
-        //get_handler()->reinit_queue(common::data::type::us, row_size, queue_size_);
-        //for (arma::uword i = 0; i < data_.n_rows; ++i) {
-            //arma::Col<T> row = arma::vectorise(data_.row(i));
-            //uint8_t * memptr = reinterpret_cast<uint8_t*>(row.memptr());
-            //common::data::ByteBuffer buf(memptr, memptr + row_size);
-            //push(common::data::type::us, buf);
-            //std::this_thread::sleep_for(std::chrono::milliseconds(period_));
-        //}
-        //eof();
-    //}
-
-    //arma::SizeCube get_fmt()
-    //{
-        //return arma::size(data_);
-    //}
-
-//private:
-    //std::string   filename_;
-    //arma::Cube<T> data_;
-    //arma::uword   period_;
-    //arma::uword   queue_size_;
-//};
-
-
-
 template<typename T>
 class NpySource: public Filter
 {
 public:
     NpySource(common::Logger logger, std::string filename):
-        common::Log(logger), Filter(logger, "npy source"), filename_(filename)
+        Filter(logger, "npy source"),
+        filename_(filename)
     {
         cnpy::NpyArray np_array = cnpy::npy_load(filename_);
         arma::uword n_rows   = np_array.shape.at(2);
@@ -94,13 +24,11 @@ public:
         data_ = arma::Cube<T>(np_array.data<T>(), n_rows, n_cols, n_slices);
     }
 
-    virtual ~NpySource() {}
-
-    virtual int activate()
+    int activate() override
     {
         log_debug(logger_, "{} filter activated, i = {}", this->name_, i_);
         auto output = dynamic_cast<Link<T>*>(outputs_.at(0));
-        auto fmt    = output->get_format();
+        auto fmt    = output->format();
 
         arma::uword row_beg = i_ * fmt.n_rows;
         arma::uword row_end = (i_+1) * fmt.n_rows;
@@ -116,6 +44,11 @@ public:
         }
     }
 
+    void reset() override
+    {
+        i_ = 0;
+    }
+
     arma::SizeCube get_fmt()
     {
         return arma::size(data_);
@@ -128,19 +61,16 @@ private:
 };
 
 
-
 template<typename T>
-class NpySink: public filter::sink<T>
+class NpySink: public Filter
 {
 public:
     NpySink(common::Logger logger, arma::SizeCube fmt):
-        common::Log(logger), filter::sink<T>(logger), data_(arma::Cube<T>(fmt)) {}
+        Filter(logger, "sink"), data_(arma::Cube<T>(fmt)) {}
 
-    virtual ~NpySink() {}
-
-    virtual int activate()
+    int activate() override
     {
-        log_debug(this->logger_, "{} filter activated, i = {}", this->name_, i_);
+        log_debug(logger_, "{} filter activated, i = {}", name_, i_);
 
         auto input = dynamic_cast<Link<T>*>(this->inputs_.at(0));
 
@@ -156,6 +86,11 @@ public:
         return 1;
     }
 
+    void reset() override
+    {
+        i_ = 0;
+    }
+
     void dump(std::string filename)
     {
         auto input = dynamic_cast<Link<T>*>(this->inputs_.at(0));
@@ -163,7 +98,7 @@ public:
             activate();
             this->pipeline_->run();
         }
-        auto fmt   = input->get_format();
+        auto fmt   = input->format();
         data_.resize(fmt.n_rows * i_, fmt.n_cols, fmt.n_slices);
         cnpy::npy_save(filename, data_.memptr(), {data_.n_slices, data_.n_cols, data_.n_rows}, "w");
     }
