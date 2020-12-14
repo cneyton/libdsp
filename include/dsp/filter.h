@@ -77,7 +77,7 @@ public:
 
     std::chrono::duration<double> total_exec_time() const
     {
-        return std::accumulate(stats_.durations.begin(), stats_.durations.end(),
+        return std::accumulate(stats_.durations.cbegin(), stats_.durations.cend(),
                             std::chrono::duration<double>::zero());
     }
 
@@ -104,8 +104,7 @@ private:
     struct
     {
         arma::uword n_execs = 0;
-        /* TODO: replace w/ vector <23-10-20, cneyton> */
-        std::deque<std::chrono::duration<double>> durations;
+        std::vector<std::chrono::duration<double>> durations;
     } stats_;
 };
 
