@@ -6,10 +6,10 @@
 namespace dsp::filter {
 
 template<typename T>
-class sink: public Filter
+class Sink: public Filter
 {
 public:
-    sink(common::Logger logger): Filter(logger, "sink") {}
+    Sink(common::Logger logger): Filter(logger, "sink") {}
 
     int activate() override
     {

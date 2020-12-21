@@ -159,7 +159,7 @@ private:
                 auto start = std::chrono::high_resolution_clock::now();
 #endif
                 try {
-                    int ret = filter->activate();
+                    [[maybe_unused]] int ret = filter->activate();
                 } catch (...) {
                     log_error(logger_, "failed to activate filter {}", filter->name());
                     /* TODO: manage error (rethrow exception ?) <23-10-20, cneyton> */
