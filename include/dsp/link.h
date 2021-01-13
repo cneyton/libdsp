@@ -9,7 +9,7 @@
 
 #include "common/log.h"
 
-#include "exception.h"
+#include "dsp_error.h"
 #include "filter.h"
 
 namespace dsp {
@@ -70,7 +70,7 @@ public:
     int push(elem_type chunk)
     {
         if (arma::size(*chunk) != format_)
-            throw link_error("invalid chunk format");
+            throw dsp_error(Errc::invalid_chunk_format);
 
         chunk_queue_.emplace_back(chunk);
 

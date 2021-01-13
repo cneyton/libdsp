@@ -13,6 +13,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Allow static library to be included in another lib (used for python wrapping)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+option(DSP_PROFILE "Enable filters profiling" OFF)
+option(DSP_RUNTESTS "Built & run tests" OFF)
+
 ################################################################################
 # dependencies
 ################################################################################
@@ -44,18 +47,22 @@ target_include_directories(sigpack INTERFACE dependencies/sigpack)
 ################################################################################
 # build
 ################################################################################
-add_library(dsp INTERFACE)
-target_include_directories(dsp INTERFACE include)
-target_link_libraries(dsp INTERFACE common sigpack)
-target_compile_options(dsp INTERFACE -Wall -Wextra)
+add_library(dsp STATIC)
+target_sources(dsp PRIVATE
+    src/dsp_error.cpp
+    src/pipeline.cpp
+    )
+target_include_directories(dsp PUBLIC include)
+target_link_libraries(dsp PUBLIC common sigpack)
+target_compile_options(dsp PUBLIC -Wall -Wextra)
+
+if (DSP_PROFILE)
+    target_compile_definitions(dsp PRIVATE DSP_PROFILE)
+endif()
 
 ################################################################################
 # tests
 ################################################################################
-if (DSP_PROFILE)
-target_compile_definitions(dsp INTERFACE DSP_PROFILE)
-endif()
-
 include(CTest)
 if(DSP_RUNTESTS)
     add_subdirectory(test)

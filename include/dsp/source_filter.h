@@ -5,7 +5,6 @@
 
 #include "common/log.h"
 
-#include "exception.h"
 #include "filter.h"
 #include "link.h"
 #include "type.h"
