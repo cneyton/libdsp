@@ -19,11 +19,33 @@ class Pipeline: public common::Log
 public:
     Pipeline(common::Logger logger);
 
+    /**
+     * @brief Reset filters & links
+     *
+     * For each filter call the reset method and reset eof on
+     * each link.
+     */
     void reset();
+
+    /**
+     * @brief Run until there is no more filter to activate
+     */
     void run();
+
+    /**
+     * @brief Set eof on each link
+     */
     void stop();
-    void wakeup();
+
+    /**
+     * @brief Wait for a filter in the pipeline to be ready
+     */
     void wait();
+
+    /**
+     * @brief Notify the pipeline to stop waiting
+     */
+    void wakeup();
 
     /**
      * Add a filter to the pipeline.
@@ -60,6 +82,9 @@ private:
     std::condition_variable cv_;
     std::mutex              mutex_;
 
+    /**
+     * @name Profiling helpers
+     * @{ */
     struct
     {
         arma::uword n_execs;
@@ -71,8 +96,12 @@ private:
 
     arma::uword n_execs() const {return stats_.n_execs;}
     std::chrono::duration<double> total_exec_time() const;
+    /**  @} */
+
 
     /**
+     * Browse filters in the pipeline looking for filters ready to activate.
+     * Returns after the activation of a filter or after browsing all filters.
      *
      * \return 1 if a filter was activated
      *         0 if no filter was activated
