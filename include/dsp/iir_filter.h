@@ -16,17 +16,14 @@ template<typename T1, typename T2>
 class IIR: public Filter
 {
 public:
-    IIR(common::Logger logger, uint16_t nb_filters, const arma::vec& b, const arma::vec& a):
+    IIR(common::Logger logger, const arma::vec& b, const arma::vec& a):
         Filter(logger, "iir"),
-        b_(b), a_(a),
-        filters_(std::vector<sp::IIR_filt<T1, T2, T1>>(nb_filters))
+        b_(b), a_(a)
     {
-        /* TODO: do this at link <25-03-20, cneyton> */
-        std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.clear();});
-        std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.set_coeffs(b, a);});
-
-        //input_pads_.push_back(input_pad_0);
-        //output_pads.push_back(output_pad_0);
+        Pad in  {.name = "in" , .format = Format()};
+        Pad out {.name = "out", .format = Format()};
+        input_pads_.insert({in.name, in});
+        output_pads_.insert({out.name, out});
     }
 
     IIR(common::Logger logger, uint16_t nb_filters):
@@ -78,22 +75,15 @@ public:
         /* TODO: todo <30-10-20, cneyton> */
     }
 
-    int negotiate_fmt() // override
+    void set_format(const Format& fmt) override
     {
-        auto input   = dynamic_cast<Link<T1>*>(inputs_.at(0));
-        auto output  = dynamic_cast<Link<T1>*>(outputs_.at(0));
-        auto fmt_in  = input->get_format();
-        auto fmt_out = output->get_format();
-
-        if (fmt_in != fmt_out)
-            return 0;
+        input_pads_["in"].format   = fmt;
+        output_pads_["out"].format = fmt;
 
         // Allocate and init filters
-        filters_ = std::vector<sp::IIR_filt<T1, T2, T1>>(fmt_in.n_cols * fmt_in.n_slices);
+        filters_ = std::vector<sp::IIR_filt<T1, T2, T1>>(fmt.n_cols * fmt.n_slices);
         std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.clear();});
         std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.set_coeffs(b_, a_);});
-
-        return 1;
     }
 
     void clear()
@@ -105,14 +95,6 @@ private:
     arma::Col<T2> b_;
     arma::Col<T2> a_;
     std::vector<sp::IIR_filt<T1, T2, T1>> filters_;
-
-    //static const Pad<T1> input_pad {
-        //.name = "input",
-    //};
-
-    //static const Pad<T1> output_pad {
-        //.name = "output"
-    //};
 };
 
 } /* namespace filter */

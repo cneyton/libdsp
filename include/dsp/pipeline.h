@@ -52,6 +52,7 @@ public:
      * Transfers ownership of the pointer to the pipeline
      * \return Handle to the filter
      */
+    /* TODO: maybe this step could be skipped if we do it during link <13-01-21, cneyton> */
     Filter * add_filter(std::unique_ptr<Filter> filter);
 
     void print_stats();

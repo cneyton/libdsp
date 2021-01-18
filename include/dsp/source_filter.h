@@ -7,16 +7,14 @@
 
 #include "filter.h"
 #include "link.h"
+#include "pad.h"
+#include "format.h"
 #include "type.h"
 
 namespace dsp {
 
-struct SourceItfc
+struct SourceInterface
 {
-    /*
-     * Be careful when changing format. The pipeline must be cleared afterward.
-     */
-    virtual void set_format(arma::SizeCube& fmt)    = 0;
     virtual void push_frame(std::string_view frame) = 0;
     virtual void eof() = 0;
 };
@@ -24,14 +22,13 @@ struct SourceItfc
 namespace filter {
 
 template<typename T1, typename T2>
-class Source: public Filter, public SourceItfc
+class Source: public Filter, public SourceInterface
 {
 public:
-    Source(common::Logger logger, std::string_view name, arma::SizeCube& fmt):
-        Filter(logger, name),
-        format_(fmt),
-        expected_frame_size_(expected_frame_size())
+    Source(common::Logger logger, std::string_view name): Filter(logger, name)
     {
+        Pad p {.name="out", .format=Format()};
+        output_pads_.insert({p.name, p});
     }
 
     int activate() override
@@ -69,17 +66,18 @@ public:
         eof_ = false;
     }
 
-    void set_format(arma::SizeCube&) override
+    void set_format(const Format& fmt) override
     {
-        //format_ = fmt;
+        format_ = fmt;
         expected_frame_size_ = expected_frame_size();
+        output_pads_["out"].format = fmt;
     }
 
     void push_frame(std::string_view frame) override
     {
         if (frame_nb_ == 0)
             // chunk_ will be overwritten if not null
-            chunk_ = std::make_unique<Chunk<T2>>(format_);
+            chunk_ = std::make_unique<Chunk<T2>>(format_.n_rows, format_.n_cols, format_.n_slices);
 
         if (frame.size() != expected_frame_size_) {
             log_warn(logger_, "frame size ({}) doesn't match expected size ({}), pushing invalid frame",
@@ -107,7 +105,7 @@ public:
     }
 
 private:
-    arma::SizeCube  format_;
+    Format          format_;
     arma::uword     frame_nb_ = 0;
     bool            eof_ = false;
     size_t          expected_frame_size_;

@@ -4,10 +4,14 @@
 #include <string>
 #include <vector>
 #include <deque>
+#include <map>
 
 #include <armadillo>
 
 #include "common/log.h"
+
+#include "format.h"
+#include "pad.h"
 
 namespace dsp {
 
@@ -41,10 +45,7 @@ public:
 
     virtual void reset()   = 0;
 
-    /**
-     *
-     */
-    //virtual void set_format() = 0;
+    virtual void set_format(const Format&) = 0;
 
     bool is_ready() const noexcept {return ready_;}
     void set_ready()      noexcept {ready_ = true;}
@@ -94,8 +95,8 @@ protected:
     Pipeline * pipeline_;
     std::vector<LinkInterface*> inputs_;
     std::vector<LinkInterface*> outputs_;
-    //std::vector<Pad>            input_pads_;
-    //std::vector<Pad>            output_pads;
+    std::map<std::string, Pad>  input_pads_;
+    std::map<std::string, Pad>  output_pads_;
 
     bool ready_   = false;
     bool verbose_ = false;

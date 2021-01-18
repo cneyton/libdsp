@@ -55,11 +55,11 @@ int main(int argc, char * argv[])
     auto fmt_data = source_filter->get_fmt();
     arma::SizeCube fmt_in(nskip, fmt_data.n_cols, fmt_data.n_slices);
 
-    auto iir_filter_iq = new filter::IIR<T_iq, double>(logger, fmt_in.n_cols * fmt_in.n_slices, b1, a1);
+    auto iir_filter_iq = new filter::IIR<T_iq, double>(logger, b1, a1);
     pipeline.add_filter(std::unique_ptr<Filter>(iir_filter_iq));
 
     arma::SizeCube fmt_roll_iq(nfft, fmt_in.n_cols, fmt_in.n_slices);
-    auto roll_filter_iq = new filter::Roll<T_iq>(logger, 1);
+    auto roll_filter_iq = new filter::Roll<T_iq>(logger, 4, 1);
     pipeline.add_filter(std::unique_ptr<Filter>(roll_filter_iq));
 
     arma::SizeCube fmt_fd(1, fmt_in.n_cols, fmt_in.n_slices);

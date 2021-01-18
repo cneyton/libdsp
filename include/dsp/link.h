@@ -11,6 +11,7 @@
 
 #include "dsp_error.h"
 #include "filter.h"
+#include "format.h"
 
 namespace dsp {
 
@@ -20,8 +21,7 @@ using Chunk = arma::Cube<T>;
 class LinkInterface
 {
 public:
-    LinkInterface(Filter * src, Filter * dst, arma::SizeCube& format):
-        src_(src), dst_(dst), format_(format) {}
+    LinkInterface(Filter * src, Filter * dst): src_(src), dst_(dst) {}
     virtual ~LinkInterface() = default;
 
     void link(Filter * src, Filter * dst)
@@ -30,7 +30,8 @@ public:
         dst->add_input(this);
     }
 
-    const arma::SizeCube& format()  const {return format_;}
+    const Format& format()  const {return format_;}
+    void set_format(const Format& fmt) {format_ = fmt;}
 
     void eof_reached()  {eof_ = 1;}
     void reset_eof()    {eof_ = 0;}
@@ -40,17 +41,11 @@ public:
 protected:
     Filter * const src_;
     Filter * const dst_;
-    const arma::SizeCube  format_;
+    Format  format_;
 
     int eof_ = 0;
 };
 
-template<typename T>
-struct Pad
-{
-    using type = T;
-    std::string     name;
-};
 
 /* TODO: add a pool of chunk to avoid oom <01-04-20, cneyton> */
 template<typename T>
@@ -59,8 +54,8 @@ class Link: public LinkInterface
 public:
     using elem_type = std::shared_ptr<Chunk<T>>;
 
-    Link(arma::SizeCube& format): LinkInterface(nullptr, nullptr, format) {}
-    Link(Filter * src, Filter * dst, arma::SizeCube& format): LinkInterface(src, dst, format)
+    Link(): LinkInterface(nullptr, nullptr) {}
+    Link(Filter * src, Filter * dst): LinkInterface(src, dst)
     {
         link(src, dst);
     }

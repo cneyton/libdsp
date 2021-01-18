@@ -68,6 +68,14 @@ public:
     {
     }
 
+    void set_format(const Format& fmt)
+    {
+        input_pads_["in"].format   = fmt;
+        Format fmt_out = fmt;
+        fmt_out.n_rows = fmt_out.n_rows * n_per_seg_;
+        output_pads_["out"].format = fmt_out;
+    }
+
     int negotiate_fmt() // override
     {
         auto input   = dynamic_cast<Link<T1>*>(inputs_.at(0));
