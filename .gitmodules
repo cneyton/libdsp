@@ -1,3 +1,6 @@
 [submodule "dependencies/libcommon"]
 	path = dependencies/libcommon
 	url = ../libcommon.git
+[submodule "dependencies/cnpy"]
+	path = dependencies/cnpy
+	url = https://github.com/rogersce/cnpy

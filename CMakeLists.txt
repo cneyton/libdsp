@@ -25,6 +25,10 @@ else()
     add_subdirectory(dependencies/libcommon)
 endif()
 
+# cnpy
+add_subdirectory(dependencies/cnpy)
+target_include_directories(cnpy-static PUBLIC dependencies/cnpy)
+
 # sigpack
 # Get version number
 file(READ dependencies/sigpack/sigpack.h sigpack_header)
@@ -53,7 +57,7 @@ target_sources(dsp PRIVATE
     src/pipeline.cpp
     )
 target_include_directories(dsp PUBLIC include)
-target_link_libraries(dsp PUBLIC common sigpack)
+target_link_libraries(dsp PUBLIC common sigpack cnpy-static z)
 target_compile_options(dsp PUBLIC -Wall -Wextra)
 
 if (DSP_PROFILE)
