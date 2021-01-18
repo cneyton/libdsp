@@ -11,6 +11,7 @@ enum class Errc {
     pad_occupied,
     pad_unknown,
     format_negotiation_failed,
+    invalid_parameters,
 };
 
 struct ErrorCategory: public std::error_category

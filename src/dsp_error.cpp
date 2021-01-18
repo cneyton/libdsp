@@ -12,6 +12,7 @@ std::string ErrorCategory::message(int e) const
     case Errc::pad_occupied:              return "pad occupied";
     case Errc::pad_unknown:               return "pad unknown";
     case Errc::format_negotiation_failed: return "format negotation failed";
+    case Errc::invalid_parameters:        return "invalid parameters";
     default:                              return "unknown error code";
     }
 }

@@ -2,10 +2,12 @@
 
 #include <vector>
 #include <memory>
-#include "sigpack.h"
+#include <filesystem>
 
 #include "common/log.h"
 
+#include "cnpy.h"
+#include "sigpack.h"
 #include "filter.h"
 #include "link.h"
 
@@ -92,6 +94,20 @@ public:
     void clear()
     {
         std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.clear();});
+    }
+
+    void load_parameters(std::filesystem::path filename)
+    {
+        auto a = cnpy::npz_load(filename, "a");
+        auto b = cnpy::npz_load(filename, "b");
+
+        if (a.word_size != sizeof(T2) || b.word_size != sizeof(T2))
+            throw dsp_error(Errc::invalid_parameters);
+
+        a_ = arma::Col<T2>(a.data<T2>(), a.shape.at(0));
+        b_ = arma::Col<T2>(b.data<T2>(), b.shape.at(0));
+        std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.clear();});
+        std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.set_coeffs(b_, a_);});
     }
 
 private:
