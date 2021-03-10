@@ -55,26 +55,22 @@ public:
     /* TODO: maybe this step could be skipped if we do it during link <13-01-21, cneyton> */
     Filter * add_filter(std::unique_ptr<Filter> filter);
 
+    Contract negotiate_format();
+
     void print_stats();
 
     template<typename T>
-    void link(Filter * src, Filter * dst, arma::SizeCube& format)
+    void link(Filter * src, const std::string& src_pad_name,
+              Filter * dst, const std::string& dst_pad_name)
     {
         if (src->pipeline() != this || dst->pipeline() != this)
             throw dsp_error(Errc::link_forbidden);
 
-        //if (src_pad_nb >= src->get_nb_input_pads() ||
-        //dst_pad_nb >= dst->get_nb_output_pads())
-        //common_die(logger_, -3, "invalid pad number");
-
-        // compare format
-        //auto src_pad = src->get_pad(src_pad_nb);
-        //auto dst_pad = dst->get_pad(dst_pad_nb);
-
         // link
-        auto link = std::make_unique<Link<T>>(src, dst, format);
+        auto link = std::make_unique<Link<T>>(src, src_pad_name, dst, dst_pad_name);
         links_.push_back(std::move(link));
     }
+
 
 private:
     std::vector<std::unique_ptr<Filter>>         filters_;

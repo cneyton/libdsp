@@ -8,6 +8,9 @@ namespace dsp {
 enum class Errc {
     invalid_chunk_format = 1,
     link_forbidden,
+    pad_occupied,
+    pad_unknown,
+    format_negotiation_failed,
 };
 
 struct ErrorCategory: public std::error_category

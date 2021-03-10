@@ -62,6 +62,21 @@ Filter * Pipeline::add_filter(std::unique_ptr<Filter> filter)
     return handle;
 }
 
+Contract Pipeline::negotiate_format()
+{
+    for (auto& f: filters_) {
+        if (f->negotiate_format() != Contract::supported_format)
+            return Contract::unsupported_format;
+    }
+
+    for (auto& l: links_) {
+        if (l->negotiate_format() != Contract::supported_format)
+            return Contract::unsupported_format;
+    }
+
+    return Contract::supported_format;
+}
+
 void Pipeline::print_stats()
 {
     for (auto& f: filters_) {

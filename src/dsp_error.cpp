@@ -9,6 +9,9 @@ std::string ErrorCategory::message(int e) const
     switch (static_cast<Errc>(e)) {
     case Errc::invalid_chunk_format:      return "invalid chunk format";
     case Errc::link_forbidden:            return "linking forbidden";
+    case Errc::pad_occupied:              return "pad occupied";
+    case Errc::pad_unknown:               return "pad unknown";
+    case Errc::format_negotiation_failed: return "format negotation failed";
     default:                              return "unknown error code";
     }
 }

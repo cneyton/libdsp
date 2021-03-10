@@ -21,17 +21,30 @@ using Chunk = arma::Cube<T>;
 class LinkInterface
 {
 public:
-    LinkInterface(Filter * src, Filter * dst): src_(src), dst_(dst) {}
-    virtual ~LinkInterface() = default;
-
-    void link(Filter * src, Filter * dst)
+    LinkInterface(Filter * src, const std::string& src_pad_name,
+                  Filter * dst, const std::string& dst_pad_name):
+        src_(src), dst_(dst),
+        src_pad_name_(src_pad_name), dst_pad_name_(dst_pad_name)
     {
-        src->add_output(this);
-        dst->add_input(this);
+        src->add_output(this, src_pad_name);
+        dst->add_input(this,  dst_pad_name);
     }
 
+    virtual ~LinkInterface() = default;
+
     const Format& format()  const {return format_;}
-    void set_format(const Format& fmt) {format_ = fmt;}
+
+    Contract negotiate_format()
+    {
+        auto src_fmt = src_->get_output_format(src_pad_name_);
+        auto dst_fmt = dst_->get_input_format(dst_pad_name_);
+
+        if (src_fmt != dst_fmt)
+            return Contract::supported_format;
+
+        format_ = src_fmt;
+        return Contract::supported_format;
+    }
 
     void eof_reached()  {eof_ = 1;}
     void reset_eof()    {eof_ = 0;}
@@ -41,6 +54,8 @@ public:
 protected:
     Filter * const src_;
     Filter * const dst_;
+    std::string src_pad_name_;
+    std::string dst_pad_name_;
     Format  format_;
 
     int eof_ = 0;
@@ -54,19 +69,15 @@ class Link: public LinkInterface
 public:
     using elem_type = std::shared_ptr<Chunk<T>>;
 
-    Link(): LinkInterface(nullptr, nullptr) {}
-    Link(Filter * src, Filter * dst): LinkInterface(src, dst)
-    {
-        link(src, dst);
-    }
+    Link(): LinkInterface(nullptr, "", nullptr, "") {}
+    Link(Filter * src, const std::string& src_pad_name,
+         Filter * dst, const std::string& dst_pad_name):
+        LinkInterface(src, src_pad_name, dst, dst_pad_name) {}
 
     virtual ~Link() = default;
 
     int push(elem_type chunk)
     {
-        if (arma::size(*chunk) != format_)
-            throw dsp_error(Errc::invalid_chunk_format);
-
         chunk_queue_.emplace_back(chunk);
 
         dst_->set_ready();
@@ -106,8 +117,6 @@ public:
 
 private:
     std::deque<elem_type> chunk_queue_;
-    //Pad<T> * src_pad_ = nullptr;
-    //Pad<T> * dst_pad_ = nullptr;
 };
 
 } /* namespace dsp */
