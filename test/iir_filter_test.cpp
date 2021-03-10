@@ -31,24 +31,30 @@ int main(int argc, char * argv[])
 
     Pipeline pipeline(logger);
 
-    auto source_filter = new NpySource<T>(logger, filename_in);
-    pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
+    auto source_filter = std::make_unique<NpySource<T>>(logger, filename_in);
+    auto source_h = pipeline.add_filter(std::move(source_filter));
     auto fmt_data = source_filter->get_fmt();
-    arma::SizeCube fmt_in(nskip, fmt_data.n_cols, fmt_data.n_slices);
 
-    auto iir_filter = new filter::IIR<T, double>(logger, fmt_in.n_cols * fmt_in.n_slices, b, a);
-    pipeline.add_filter(std::unique_ptr<Filter>(iir_filter));
+    auto iir_filter = std::make_unique<filter::IIR<T, double>>(logger, b, a);
+    auto iir_h = pipeline.add_filter(std::move(iir_filter));
 
-    auto sink_filter = new NpySink<T>(logger, fmt_data);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
+    auto sink_filter = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink_h = pipeline.add_filter(std::move(sink_filter));
 
-    pipeline.link<T>(source_filter, iir_filter, fmt_in);
-    pipeline.link<T>(iir_filter, sink_filter, fmt_in);
+    pipeline.link<T>(source_h, "out", iir_h, "in");
+    pipeline.link<T>(iir_h, "out", sink_h, "in");
 
+    Format fmt { nskip, fmt_data.n_cols, fmt_data.n_slices };
+    source_h->set_output_format(fmt, "out");
+    iir_h->set_input_format(fmt, "in");
+    iir_h->set_output_format(fmt, "out");
+    sink_h->set_input_format(fmt, "in");
+    if (pipeline.negotiate_format() != Contract::supported_format)
+        throw dsp_error(Errc::format_negotiation_failed);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"
-              << "  chunk size: (" << fmt_in.n_rows << "," << fmt_in.n_cols << "," << fmt_in.n_slices << ")\n"
+              << "  chunk size: (" << fmt.n_rows << "," << fmt.n_cols << "," << fmt.n_slices << ")\n"
               << "  nb frames total: " << fmt_data.n_rows << "\n"
               << "------------------------------\n"
               << "Filter params:\n"

@@ -33,8 +33,8 @@ public:
     {
         log_debug(logger_, "{} filter activated", name_);
 
-        auto input    = dynamic_cast<Link<T>*>(inputs_.at(0));
-        auto output   = dynamic_cast<Link<T>*>(outputs_.at(0));
+        auto input    = dynamic_cast<Link<T>*>(inputs_.at("in"));
+        auto output   = dynamic_cast<Link<T>*>(outputs_.at("out"));
         auto chunk_in = std::make_shared<Chunk<T>>();
 
         if (!input->pop(chunk_in)) {
@@ -58,7 +58,7 @@ public:
             return 0;
         }
 
-        auto chunk_out = std::make_shared<Chunk<T>>(fmt_out);
+        auto chunk_out = std::make_shared<Chunk<T>>(fmt_out.n_rows, fmt_out.n_cols, fmt_out.n_slices);
         for (arma::uword i = 0; i < n_per_seg_; ++i) {
             chunk_out->rows(i * fmt_in.n_rows, (i+1) * fmt_in.n_rows - 1) = *(chunk_queue_[i]);
         }
@@ -73,12 +73,18 @@ public:
         chunk_queue_.clear();
     }
 
-    void set_format(const Format& fmt) override
+    Contract negotiate_format() override
     {
-        input_pads_["in"].format   = fmt;
-        Format fmt_out = fmt;
-        fmt_out.n_rows = fmt_out.n_rows * n_per_seg_;
-        output_pads_["out"].format = fmt_out;
+        auto in_fmt = input_pads_["in"].format;
+        auto out_fmt = output_pads_["in"].format;
+
+        if ((in_fmt.n_cols != out_fmt.n_cols) ||
+            (in_fmt.n_slices != out_fmt.n_slices) ||
+            (in_fmt.n_rows * n_per_seg_ != out_fmt.n_slices)) {
+            return Contract::unsupported_format;
+        }
+
+        return Contract::supported_format;
     }
 
 private:

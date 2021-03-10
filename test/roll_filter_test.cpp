@@ -1,8 +1,6 @@
 #include "test_utils.h"
 
-#include "dsp/iir_filter.h"
 #include "dsp/roll_filter.h"
-#include "dsp/fd_filter.h"
 
 #include "spdlog/common.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
@@ -24,29 +22,36 @@ int main(int argc, char * argv[])
     Pipeline pipeline(logger);
 
 
-    cnpy::NpyArray nskip_np  = cnpy::npz_load(filename_params, "nskip");
-    cnpy::NpyArray n_in_np   = cnpy::npz_load(filename_params, "n_in");
-    cnpy::NpyArray n_out_np  = cnpy::npz_load(filename_params, "n_out");
+    cnpy::NpyArray nskip_np   = cnpy::npz_load(filename_params, "nskip");
+    cnpy::NpyArray nperseg_np = cnpy::npz_load(filename_params, "nperseg");
+    cnpy::NpyArray n_in_np    = cnpy::npz_load(filename_params, "n_in");
+    cnpy::NpyArray n_out_np   = cnpy::npz_load(filename_params, "n_out");
 
     arma::uword nskip(*nskip_np.data<arma::uword>());
+    arma::uword nperseg(*nperseg_np.data<arma::uword>());
     arma::uword n_in(*n_in_np.data<arma::uword>());
     arma::uword n_out(*n_out_np.data<arma::uword>());
 
 
-    auto source_filter = new NpySource<T>(logger, filename_in);
-    pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
+    auto source_filter = std::make_unique<NpySource<T>>(logger, filename_in);
+    auto source_h = pipeline.add_filter(std::move(source_filter));
     auto fmt_data = source_filter->get_fmt();
-    arma::SizeCube fmt_in(n_in, fmt_data.n_cols, fmt_data.n_slices);
 
-    arma::SizeCube fmt_out(n_out, fmt_in.n_cols, fmt_in.n_slices);
-    auto roll_filter = new filter::Roll<T>(logger, nskip);
-    pipeline.add_filter(std::unique_ptr<Filter>(roll_filter));
+    auto roll_filter = std::make_unique<filter::Roll<T>>(logger, nperseg, nskip);
+    auto roll_h = pipeline.add_filter(std::move(roll_filter));
 
-    auto sink_filter = new NpySink<T>(logger, fmt_data);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
+    auto sink_filter = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink_h = pipeline.add_filter(std::move(sink_filter));
 
-    pipeline.link<T>(source_filter, roll_filter, fmt_in);
-    pipeline.link<T>(roll_filter, sink_filter, fmt_out);
+    pipeline.link<T>(source_h, "out", roll_h, "in");
+    pipeline.link<T>(roll_h, "out", sink_h, "in");
+
+    Format fmt_in { n_in, fmt_data.n_cols, fmt_data.n_slices };
+    Format fmt_out { n_out, fmt_in.n_cols, fmt_in.n_slices };
+    source_h->set_output_format(fmt_in, "out");
+    roll_h->set_input_format(fmt_in, "in");
+    roll_h->set_output_format(fmt_out, "out");
+    sink_h->set_input_format(fmt_out, "in");
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"

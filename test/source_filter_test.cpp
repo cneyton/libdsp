@@ -19,15 +19,20 @@ int main(int argc, char * argv[])
 
     Pipeline pipeline(logger);
 
-    auto source_filter = new NpySource<T>(logger, filename_in);
-    pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
+    auto source_filter = std::make_unique<NpySource<T>>(logger, filename_in);
+    auto source_h = pipeline.add_filter(std::move(source_filter));
     auto fmt_data = source_filter->get_fmt();
 
-    auto sink_filter = new NpySink<T>(logger, fmt_data);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
+    auto sink_filter = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink_h = pipeline.add_filter(std::move(sink_filter));
 
-    arma::SizeCube fmt(20, fmt_data.n_cols, fmt_data.n_slices);
-    pipeline.link<T>(source_filter, sink_filter, fmt);
+    pipeline.link<T>(source_h, "out", sink_h, "in");
+
+    Format fmt { 20, fmt_data.n_cols, fmt_data.n_slices };
+    source_h->set_output_format(fmt, "out");
+    sink_h->set_input_format(fmt, "in");
+    if (pipeline.negotiate_format() != Contract::supported_format)
+        throw dsp_error(Errc::format_negotiation_failed);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"

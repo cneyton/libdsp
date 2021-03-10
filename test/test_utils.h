@@ -16,6 +16,9 @@ public:
         Filter(logger, "npy source"),
         filename_(filename)
     {
+        Pad p {.name="out", .format=Format()};
+        output_pads_.insert({p.name, p});
+
         cnpy::NpyArray np_array = cnpy::npy_load(filename_);
         arma::uword n_rows   = np_array.shape.at(2);
         arma::uword n_cols   = np_array.shape.at(1);
@@ -27,7 +30,7 @@ public:
     int activate() override
     {
         log_debug(logger_, "{} filter activated, i = {}", this->name_, i_);
-        auto output = dynamic_cast<Link<T>*>(outputs_.at(0));
+        auto output = dynamic_cast<Link<T>*>(outputs_.at("out"));
         auto fmt    = output->format();
 
         arma::uword row_beg = i_ * fmt.n_rows;
@@ -47,6 +50,11 @@ public:
     void reset() override
     {
         i_ = 0;
+    }
+
+    Contract negotiate_format() override
+    {
+        return Contract::supported_format;
     }
 
     arma::SizeCube get_fmt()
@@ -72,7 +80,7 @@ public:
     {
         log_debug(logger_, "{} filter activated, i = {}", name_, i_);
 
-        auto input = dynamic_cast<Link<T>*>(this->inputs_.at(0));
+        auto input = dynamic_cast<Link<T>*>(this->inputs_.at("in"));
 
         int ret;
         auto chunk = std::make_shared<Chunk<T>>();
@@ -89,6 +97,11 @@ public:
     void reset() override
     {
         i_ = 0;
+    }
+
+    Contract negotiate_format() override
+    {
+        return Contract::supported_format;
     }
 
     void dump(std::string filename)

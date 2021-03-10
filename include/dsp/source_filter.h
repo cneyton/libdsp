@@ -35,7 +35,7 @@ public:
     {
         log_debug(logger_, "filter {} activated", name_);
 
-        Link<T2> * output = dynamic_cast<Link<T2>*>(outputs_.at(0));
+        Link<T2> * output = dynamic_cast<Link<T2>*>(outputs_.at("out"));
         typename Link<T2>::elem_type front;
 
         {
@@ -66,29 +66,30 @@ public:
         eof_ = false;
     }
 
-    void set_format(const Format& fmt) override
+    Contract negotiate_format() override
     {
-        format_ = fmt;
-        expected_frame_size_ = expected_frame_size();
-        output_pads_["out"].format = fmt;
+        return Contract::supported_format;
     }
 
     void push_frame(std::string_view frame) override
     {
+        Format fmt = output_pads_["out"].format;
+        size_t frame_size = expected_frame_size(fmt);
+
         if (frame_nb_ == 0)
             // chunk_ will be overwritten if not null
-            chunk_ = std::make_unique<Chunk<T2>>(format_.n_rows, format_.n_cols, format_.n_slices);
+            chunk_ = std::make_unique<Chunk<T2>>(fmt.n_rows, fmt.n_cols, fmt.n_slices);
 
-        if (frame.size() != expected_frame_size_) {
+        if (frame.size() != frame_size) {
             log_warn(logger_, "frame size ({}) doesn't match expected size ({}), pushing invalid frame",
-                                           frame.size(), expected_frame_size_);
-            std::string invalid_frame(expected_frame_size_, 0);
+                                           frame.size(), frame_size);
+            std::string invalid_frame(frame_size, 0);
             fill_frame(invalid_frame, frame_nb_);
         } else {
             fill_frame(frame, frame_nb_);
         }
 
-        if (++frame_nb_ < format_.n_rows)
+        if (++frame_nb_ < fmt.n_rows)
             return;
 
         std::unique_lock<std::mutex> lk(mutex_);
@@ -105,17 +106,17 @@ public:
     }
 
 private:
-    Format          format_;
     arma::uword     frame_nb_ = 0;
     bool            eof_ = false;
-    size_t          expected_frame_size_;
 
     using elem_type = std::unique_ptr<Chunk<T2>>;
     elem_type             chunk_ = nullptr;
     std::queue<elem_type> queue_;
     std::mutex            mutex_;
 
-    size_t expected_frame_size() {return format_.n_cols * format_.n_slices * sizeof(T1);};
+    static
+    size_t expected_frame_size(const Format& fmt) { return fmt.n_cols * fmt.n_slices * sizeof(T1); }
+
     void   fill_frame(std::string_view buf, const arma::uword frame_nb);
 };
 

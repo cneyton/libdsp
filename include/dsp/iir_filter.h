@@ -37,8 +37,8 @@ public:
     {
         log_debug(logger_, "{} filter activated", name_);
 
-        auto input    = dynamic_cast<Link<T1>*>(inputs_.at(0));
-        auto output   = dynamic_cast<Link<T1>*>(outputs_.at(0));
+        auto input    = dynamic_cast<Link<T1>*>(inputs_.at("in"));
+        auto output   = dynamic_cast<Link<T1>*>(outputs_.at("out"));
         auto chunk_in = std::make_shared<Chunk<T1>>();
 
         if (!input->pop(chunk_in)) {
@@ -48,7 +48,7 @@ public:
         }
 
         auto size = output->format();
-        auto chunk_out = std::make_shared<Chunk<T1>>(size);
+        auto chunk_out = std::make_shared<Chunk<T1>>(size.n_rows, size.n_cols, size.n_slices);
         uint n = 0;
         for (uint k = 0; k < size.n_slices; k++) {
             for (uint j = 0; j < size.n_cols; j++) {
@@ -75,15 +75,18 @@ public:
         /* TODO: todo <30-10-20, cneyton> */
     }
 
-    void set_format(const Format& fmt) override
+    Contract negotiate_format() override
     {
-        input_pads_["in"].format   = fmt;
-        output_pads_["out"].format = fmt;
+        if (input_pads_["in"].format != output_pads_["out"].format)
+            return Contract::unsupported_format;
 
         // Allocate and init filters
+        auto fmt = input_pads_["in"].format;
         filters_ = std::vector<sp::IIR_filt<T1, T2, T1>>(fmt.n_cols * fmt.n_slices);
         std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.clear();});
         std::for_each(filters_.begin(), filters_.end(), [&](auto& f){f.set_coeffs(b_, a_);});
+
+        return Contract::supported_format;
     }
 
     void clear()

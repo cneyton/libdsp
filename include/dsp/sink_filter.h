@@ -9,13 +9,17 @@ template<typename T>
 class Sink: public Filter
 {
 public:
-    Sink(common::Logger logger): Filter(logger, "sink") {}
+    Sink(common::Logger logger): Filter(logger, "sink")
+    {
+        Pad p {.name="in", .format=Format()};
+        input_pads_.insert({p.name, p});
+    }
 
     int activate() override
     {
         log_debug(logger_, "{} filter activated", name_);
 
-        auto input = dynamic_cast<Link<T>*>(inputs_.at(0));
+        auto input = dynamic_cast<Link<T>*>(inputs_.at("in"));
 
         auto chunk = std::make_shared<Chunk<T>>();
         if (!input->pop(chunk))
@@ -28,7 +32,12 @@ public:
 
     void reset() override
     {
-        // do nothing
+        // nothing to do
+    }
+
+    Contract negotiate_format() override
+    {
+        return Contract::supported_format;
     }
 };
 
