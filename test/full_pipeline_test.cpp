@@ -50,52 +50,74 @@ int main(int argc, char * argv[])
 
     Pipeline pipeline(logger);
 
-    auto source_filter = new NpySource<T_iq>(logger, filename_in);
-    pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
+    auto source_filter = std::make_unique<NpySource<T_iq>>(logger, filename_in);
+    auto source_h = pipeline.add_filter(std::move(source_filter));
     auto fmt_data = source_filter->get_fmt();
-    arma::SizeCube fmt_in(nskip, fmt_data.n_cols, fmt_data.n_slices);
 
-    auto iir_filter_iq = new filter::IIR<T_iq, double>(logger, b1, a1);
-    pipeline.add_filter(std::unique_ptr<Filter>(iir_filter_iq));
+    auto iir_filter_iq = std::make_unique<filter::IIR<T_iq, double>>(logger, b1, a1);
+    auto iir_iq_h = pipeline.add_filter(std::move(iir_filter_iq));
 
-    arma::SizeCube fmt_roll_iq(nfft, fmt_in.n_cols, fmt_in.n_slices);
-    auto roll_filter_iq = new filter::Roll<T_iq>(logger, 4, 1);
-    pipeline.add_filter(std::unique_ptr<Filter>(roll_filter_iq));
+    auto roll_filter_iq = std::make_unique<filter::Roll<T_iq>>(logger, 4, nskip);
+    auto roll_iq_h = pipeline.add_filter(std::move(roll_filter_iq));
 
-    arma::SizeCube fmt_fd(1, fmt_in.n_cols, fmt_in.n_slices);
-    auto fd_filter = new filter::FD<T_iq, T_fd>(logger, nfft, arma::vec(nfft, arma::fill::ones));
-    pipeline.add_filter(std::unique_ptr<Filter>(fd_filter));
+    auto fd_filter = std::make_unique<filter::FD<T_iq, T_fd>>(logger, nfft, arma::vec(nfft, arma::fill::ones));
+    auto fd_h = pipeline.add_filter(std::move(fd_filter));
 
-    arma::SizeCube fmt_buffer(fdskip, fmt_in.n_cols, fmt_in.n_slices);
-    auto buffer_filter = new filter::Buffer<T_fd>(logger);
-    pipeline.add_filter(std::unique_ptr<Filter>(buffer_filter));
+    auto buffer_filter = std::make_unique<filter::Buffer<T_fd>>(logger);
+    auto buffer_h = pipeline.add_filter(std::move(buffer_filter));
 
-    auto iir_filter_fd = new filter::IIR<T_fd, double>(logger, fmt_in.n_cols * fmt_in.n_slices, b2, a2);
-    pipeline.add_filter(std::unique_ptr<Filter>(iir_filter_fd));
+    auto iir_filter_fd = std::make_unique<filter::IIR<T_fd, double>>(logger, b2, a2);
+    auto iir_fd_h = pipeline.add_filter(std::move(iir_filter_fd));
 
-    arma::SizeCube fmt_roll_fd(fdperseg, fmt_in.n_cols, fmt_in.n_slices);
-    auto roll_filter = new filter::Roll<T_fd>(logger, 1);
-    pipeline.add_filter(std::unique_ptr<Filter>(roll_filter));
+    auto roll_fd_filter = std::make_unique<filter::Roll<T_fd>>(logger, fdperseg, fdskip);
+    auto roll_fd_h = pipeline.add_filter(std::move(roll_fd_filter));
 
-    auto fhr_filter = new filter::FHR<T_fd, T_fd, T_fd>(logger, radius, period_max, threshold);
-    pipeline.add_filter(std::unique_ptr<Filter>(fhr_filter));
+    auto fhr_filter = std::make_unique<filter::FHR<T_fd, T_fd, T_fd>>(logger, radius, period_max, threshold);
+    auto fhr_h = pipeline.add_filter(std::move(fhr_filter));
 
-    arma::SizeCube fmt_out(1, fmt_in.n_cols, fmt_in.n_slices);
-    auto sink_filter_0 = new NpySink<T_fd>(logger, fmt_data);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_0));
+    auto sink_filter_0 = std::make_unique<NpySink<T_fd>>(logger, fmt_data);
+    auto sink0_h = pipeline.add_filter(std::move(sink_filter_0));
 
-    auto sink_filter_1 = new NpySink<T_fd>(logger, fmt_data);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
+    auto sink_filter_1 = std::make_unique<NpySink<T_fd>>(logger, fmt_data);
+    auto sink1_h = pipeline.add_filter(std::move(sink_filter_1));
 
-    pipeline.link<T_iq>(source_filter  , iir_filter_iq  , fmt_in);
-    pipeline.link<T_iq>(iir_filter_iq  , roll_filter_iq , fmt_in);
-    pipeline.link<T_iq>(roll_filter_iq , fd_filter      , fmt_roll_iq);
-    pipeline.link<T_fd>(fd_filter      , buffer_filter  , fmt_fd);
-    pipeline.link<T_fd>(buffer_filter  , iir_filter_fd  , fmt_buffer);
-    pipeline.link<T_fd>(iir_filter_fd  , roll_filter    , fmt_buffer);
-    pipeline.link<T_fd>(roll_filter    , fhr_filter     , fmt_roll_fd);
-    pipeline.link<T_fd>(fhr_filter     , sink_filter_0  , fmt_out);
-    pipeline.link<T_fd>(fhr_filter     , sink_filter_1  , fmt_out);
+    pipeline.link<T_iq>(source_h , "out", iir_iq_h , "in");
+    pipeline.link<T_iq>(iir_iq_h , "out", roll_iq_h, "in");
+    pipeline.link<T_iq>(roll_iq_h, "out", fd_h     , "in");
+    pipeline.link<T_fd>(fd_h     , "out", buffer_h , "in");
+    pipeline.link<T_fd>(buffer_h , "out", iir_fd_h , "in");
+    pipeline.link<T_fd>(iir_fd_h , "out", roll_fd_h, "in");
+    pipeline.link<T_fd>(roll_fd_h, "out", fhr_h    , "in");
+    pipeline.link<T_fd>(fhr_h    , "fhr", sink0_h  , "in");
+    pipeline.link<T_fd>(fhr_h    , "cor", sink1_h  , "in");
+
+    Format fmt_in { nskip, fmt_data.n_cols, fmt_data.n_slices };
+    Format fmt_roll_iq { nfft, fmt_in.n_cols, fmt_in.n_slices };
+    Format fmt_fd{ 1, fmt_in.n_cols, fmt_in.n_slices };
+    Format fmt_buffer { fdskip, fmt_in.n_cols, fmt_in.n_slices };
+    Format fmt_roll_fd { fdperseg, fmt_in.n_cols, fmt_in.n_slices };
+    Format fmt_out { 1, fmt_in.n_cols, fmt_in.n_slices };
+
+    source_h->set_output_format(fmt_in, "out");
+    iir_iq_h->set_input_format(fmt_in, "in");
+    iir_iq_h->set_output_format(fmt_in, "out");
+    roll_iq_h->set_input_format(fmt_in, "in");
+    roll_iq_h->set_output_format(fmt_roll_iq, "out");
+    fd_h->set_input_format(fmt_roll_iq, "in");
+    fd_h->set_output_format(fmt_fd, "out");
+    buffer_h->set_input_format(fmt_fd, "in");
+    buffer_h->set_output_format(fmt_buffer, "out");
+    iir_fd_h->set_input_format(fmt_buffer, "in");
+    iir_fd_h->set_output_format(fmt_buffer, "out");
+    roll_fd_h->set_input_format(fmt_buffer, "in");
+    roll_fd_h->set_output_format(fmt_roll_fd, "out");
+    fhr_h->set_input_format(fmt_roll_fd, "in");
+    fhr_h->set_output_format(fmt_out, "fhr");
+    fhr_h->set_output_format(fmt_out, "cor");
+    sink0_h->set_input_format(fmt_out, "in");
+    sink1_h->set_input_format(fmt_out, "in");
+    if (pipeline.negotiate_format() != Contract::supported_format)
+        throw dsp_error(Errc::format_negotiation_failed);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T_iq).name() << "\n"

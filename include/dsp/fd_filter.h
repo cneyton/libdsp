@@ -14,18 +14,18 @@ public:
         Filter(logger, "fd"), nfft_(nfft),
         fftw_(sp::FFTW(nfft, FFTW_MEASURE)), window_(window)
     {
-        /* TODO: do this at link  <14-02-20, cneyton> */
-        // Create fftw plan by first application of fft
-        in_ = arma::Col<T1>(nfft);
-        fftw_.fft_cx(in_, in_);
+        Pad in  {.name = "in" , .format = Format()};
+        Pad out {.name = "out", .format = Format()};
+        input_pads_.insert({in.name, in});
+        output_pads_.insert({out.name, out});
     }
 
     int activate() override
     {
         log_debug(logger_, "{} filter activated", name_);
 
-        auto input    = dynamic_cast<Link<T1>*>(inputs_.at(0));
-        auto output   = dynamic_cast<Link<T2>*>(outputs_.at(0));
+        auto input    = dynamic_cast<Link<T1>*>(inputs_.at("in"));
+        auto output   = dynamic_cast<Link<T2>*>(outputs_.at("out"));
         auto chunk_in = std::make_shared<Chunk<T1>>();
 
         if (!input->pop(chunk_in)) {
@@ -36,7 +36,8 @@ public:
 
         auto fmt_in    = input->format();
         auto fmt_out   = output->format();
-        auto chunk_out = std::make_shared<Chunk<T2>>(fmt_out);
+        auto chunk_out = std::make_shared<Chunk<T2>>(fmt_out.n_rows, fmt_out.n_cols,
+                                                     fmt_out.n_slices);
 
         /* TODO: add zero padding and windowing  <26-03-20, cneyton> */
         arma::Col<T2> w   = arma::regspace<arma::Col<T2>>(0, nfft_-1) - static_cast<T2>(nfft_)/2;
@@ -68,39 +69,29 @@ public:
     {
     }
 
-    void set_format(const Format& fmt)
+    Contract negotiate_format() override
     {
-        input_pads_["in"].format   = fmt;
-        Format fmt_out = fmt;
-        fmt_out.n_rows = fmt_out.n_rows * n_per_seg_;
-        output_pads_["out"].format = fmt_out;
-    }
+        auto fmt_in  = input_pads_["in"].format;
+        auto fmt_out = output_pads_["in"].format;
 
-    int negotiate_fmt() // override
-    {
-        auto input   = dynamic_cast<Link<T1>*>(inputs_.at(0));
-        auto output  = dynamic_cast<Link<T2>*>(outputs_.at(0));
-        auto fmt_in  = input->get_format();
-        auto fmt_out = output->get_format();
-
-        if (fmt_in.n_cols != fmt_out.n_cols || fmt_in.n_slices != fmt_out.n_slices)
-            return 0;
-
-        if (fmt_out.n_rows != 1)
-            return 0;
+        if (fmt_in.n_cols != fmt_out.n_cols ||
+            fmt_in.n_slices != fmt_out.n_slices ||
+            fmt_in.n_rows != 1) {
+            return Contract::unsupported_format;
+        }
 
         // Create fftw plan by first application of fft
         in_ = arma::Col<T1>(nfft_);
         fftw_.fft_cx(in_, in_);
 
-        return 1;
+        return Contract::supported_format;
     }
 
 private:
-    arma::uword nfft_;
-    sp::FFTW    fftw_;
-    arma::vec   window_;
-    arma::Col<T1>   in_;
+    arma::uword   nfft_;
+    sp::FFTW      fftw_;
+    arma::vec     window_;
+    arma::Col<T1> in_;
 };
 
 } /* namespace dsp::filter */

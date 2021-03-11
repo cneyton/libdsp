@@ -40,38 +40,51 @@ int main(int argc, char * argv[])
 
     Pipeline pipeline(logger);
 
-    auto source_filter = new NpySource<T>(logger, filename_in);
-    pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
+    auto source_filter = std::make_unique<NpySource<T>>(logger, filename_in);
+    auto source_h = pipeline.add_filter(std::move(source_filter));
     auto fmt_data = source_filter->get_fmt();
-    arma::SizeCube fmt_in(1, fmt_data.n_cols, fmt_data.n_slices);
 
-    arma::SizeCube fmt_buffer(fdskip, fmt_in.n_cols, fmt_in.n_slices);
-    auto buffer_filter = new filter::Buffer<T>(logger);
-    pipeline.add_filter(std::unique_ptr<Filter>(buffer_filter));
+    auto buffer_filter = std::make_unique<filter::Buffer<T>>(logger);
+    auto buffer_h = pipeline.add_filter(std::move(buffer_filter));
 
-    auto iir_filter = new filter::IIR<T, double>(logger, fmt_in.n_cols * fmt_in.n_slices, b, a);
-    pipeline.add_filter(std::unique_ptr<Filter>(iir_filter));
+    auto iir_filter = std::make_unique<filter::IIR<T, double>>(logger, b, a);
+    auto iir_h = pipeline.add_filter(std::move(iir_filter));
 
-    arma::SizeCube fmt_roll(fdperseg, fmt_in.n_cols, fmt_in.n_slices);
-    auto roll_filter = new filter::Roll<T>(logger, 1);
-    pipeline.add_filter(std::unique_ptr<Filter>(roll_filter));
+    auto roll_filter = std::make_unique<filter::Roll<T>>(logger, fdperseg, fdskip);
+    auto roll_h = pipeline.add_filter(std::move(roll_filter));
 
-    arma::SizeCube fmt_out(1, fmt_in.n_cols, fmt_in.n_slices);
-    auto fhr_filter = new filter::FHR<T, T, T>(logger, radius, period_max, threshold);
-    pipeline.add_filter(std::unique_ptr<Filter>(fhr_filter));
+    auto fhr_filter = std::make_unique<filter::FHR<T, T, T>>(logger, radius, period_max, threshold);
+    auto fhr_h = pipeline.add_filter(std::move(fhr_filter));
 
-    auto sink_filter_0 = new NpySink<T>(logger, fmt_data);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_0));
+    auto sink_filter_0 = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink0_h = pipeline.add_filter(std::move(sink_filter_0));
 
-    auto sink_filter_1 = new NpySink<T>(logger, fmt_data);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
+    auto sink_filter_1 = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink1_h = pipeline.add_filter(std::move(sink_filter_1));
 
-    pipeline.link<T>(source_filter, buffer_filter, fmt_in);
-    pipeline.link<T>(buffer_filter, iir_filter   , fmt_buffer);
-    pipeline.link<T>(iir_filter   , roll_filter  , fmt_buffer);
-    pipeline.link<T>(roll_filter  , fhr_filter   , fmt_roll);
-    pipeline.link<T>(fhr_filter   , sink_filter_0, fmt_out);
-    pipeline.link<T>(fhr_filter   , sink_filter_1, fmt_out);
+    pipeline.link<T>(source_h, "out", buffer_h, "in");
+    pipeline.link<T>(buffer_h, "out", iir_h   , "in");
+    pipeline.link<T>(iir_h   , "out", roll_h  , "in");
+    pipeline.link<T>(roll_h  , "out", fhr_h   , "in");
+    pipeline.link<T>(fhr_h   , "fhr", sink0_h , "in");
+    pipeline.link<T>(fhr_h   , "cor", sink1_h , "in");
+
+    Format fmt_in { 1, fmt_data.n_cols, fmt_data.n_slices };
+    Format fmt_buffer { fdskip, fmt_in.n_cols, fmt_in.n_slices };
+    Format fmt_roll { fdperseg, fmt_in.n_cols, fmt_in.n_slices };
+    Format fmt_out { 1, fmt_in.n_cols, fmt_in.n_slices };
+    source_h->set_output_format(fmt_in, "out");
+    buffer_h->set_input_format(fmt_in, "in");
+    buffer_h->set_output_format(fmt_buffer, "out");
+    iir_h->set_input_format(fmt_buffer, "in");
+    iir_h->set_output_format(fmt_buffer, "out");
+    roll_h->set_input_format(fmt_buffer, "in");
+    roll_h->set_output_format(fmt_roll, "out");
+    fhr_h->set_input_format(fmt_roll, "in");
+    fhr_h->set_output_format(fmt_out, "fhr");
+    fhr_h->set_output_format(fmt_out, "cor");
+    sink0_h->set_input_format(fmt_out, "in");
+    sink1_h->set_input_format(fmt_out, "in");
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"

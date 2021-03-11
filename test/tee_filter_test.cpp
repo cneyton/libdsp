@@ -23,23 +23,32 @@ int main(int argc, char * argv[])
 
     Pipeline pipeline(logger);
 
-    auto source_filter = new NpySource<T>(logger, filename_in);
-    pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
+    auto source_filter = std::make_unique<NpySource<T>>(logger, filename_in);
+    auto source_h = pipeline.add_filter(std::move(source_filter));
     auto fmt_data = source_filter->get_fmt();
-    arma::SizeCube fmt(nb_frames, fmt_data.n_cols, fmt_data.n_slices);
 
-    auto sink_filter_0 = new NpySink<T>(logger, fmt_data);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_0));
+    auto tee_filter = std::make_unique<filter::Tee<T, N>>(logger);
+    auto tee_h = pipeline.add_filter(std::move(tee_filter));
 
-    auto sink_filter_1 = new NpySink<T>(logger, fmt_data);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
+    auto sink_filter_0 = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink0_h = pipeline.add_filter(std::move(sink_filter_0));
 
-    auto tee_filter = new filter::Tee<T, N>(logger);
-    pipeline.add_filter(std::unique_ptr<Filter>(tee_filter));
+    auto sink_filter_1 = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink1_h = pipeline.add_filter(std::move(sink_filter_1));
 
-    pipeline.link<T>(source_filter, tee_filter, fmt);
-    pipeline.link<T>(tee_filter   , sink_filter_0, fmt);
-    pipeline.link<T>(tee_filter   , sink_filter_1, fmt);
+    pipeline.link<T>(source_h, "out", tee_h  , "in");
+    pipeline.link<T>(tee_h   , "0"  , sink0_h, "in");
+    pipeline.link<T>(tee_h   , "1"  , sink1_h, "in");
+
+    Format fmt { nb_frames, fmt_data.n_cols, fmt_data.n_slices };
+    source_h->set_output_format(fmt, "out");
+    tee_h->set_input_format(fmt, "in");
+    tee_h->set_output_format(fmt, "0");
+    tee_h->set_output_format(fmt, "1");
+    sink0_h->set_input_format(fmt, "in");
+    sink1_h->set_input_format(fmt, "in");
+    if (pipeline.negotiate_format() != Contract::supported_format)
+        throw dsp_error(Errc::format_negotiation_failed);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"

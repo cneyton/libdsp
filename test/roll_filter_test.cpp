@@ -52,6 +52,8 @@ int main(int argc, char * argv[])
     roll_h->set_input_format(fmt_in, "in");
     roll_h->set_output_format(fmt_out, "out");
     sink_h->set_input_format(fmt_out, "in");
+    if (pipeline.negotiate_format() != Contract::supported_format)
+        throw dsp_error(Errc::format_negotiation_failed);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"

@@ -20,14 +20,20 @@ template<typename T>
 class Buffer: public Filter
 {
 public:
-    Buffer(common::Logger logger): Filter(logger, "buffer") {}
+    Buffer(common::Logger logger): Filter(logger, "buffer")
+    {
+        Pad in  {.name = "in" , .format = Format()};
+        Pad out {.name = "out", .format = Format()};
+        input_pads_.insert({in.name, in});
+        output_pads_.insert({out.name, out});
+    }
 
     int activate() override
     {
         log_debug(logger_, "{} filter activated", name_);
 
-        auto input    = dynamic_cast<Link<T>*>(inputs_.at(0));
-        auto output   = dynamic_cast<Link<T>*>(outputs_.at(0));
+        auto input    = dynamic_cast<Link<T>*>(inputs_.at("in"));
+        auto output   = dynamic_cast<Link<T>*>(outputs_.at("out"));
         auto chunk_in = std::make_shared<Chunk<T>>();
 
         if (!input->pop(chunk_in)) {
@@ -45,9 +51,9 @@ public:
             return 0;
 
         i_ = 0;
-        auto chunk_out = std::make_shared<Chunk<T>>(fmt_out);
-        /* TODO: remove when fmt negociation is done <20-03-20, cneyton> */
-        chunk_intern_.set_size(fmt_in);
+        auto chunk_out = std::make_shared<Chunk<T>>(fmt_out.n_rows, fmt_out.n_cols,
+                                                     fmt_out.n_slices);
+
         // first copy the internal chunk
         if (n_intern_ != 0) {
             chunk_out->rows(0, n_intern_ - 1) = chunk_intern_.rows(0, n_intern_ - 1);
@@ -80,22 +86,20 @@ public:
         chunk_queue_.clear();
     }
 
-    int negotiate_fmt() // override
+    Contract negotiate_format() override
     {
-        auto input   = dynamic_cast<Link<T>*>(inputs_.at(0));
-        auto output  = dynamic_cast<Link<T>*>(outputs_.at(0));
-        auto fmt_in  = input->get_format();
-        auto fmt_out = output->get_format();
+        auto fmt_in  = input_pads_["in"].format;
+        auto fmt_out = output_pads_["in"].format;
 
-        if (fmt_in.n_cols != fmt_out.n_cols || fmt_in.n_slices != fmt_out.n_slices)
-            return 0;
+        if (fmt_in.n_cols != fmt_out.n_cols ||
+            fmt_in.n_slices != fmt_out.n_slices ||
+            fmt_in.n_rows >= fmt_out.n_rows) {
+            return Contract::unsupported_format;
+        }
 
-        if (fmt_in.n_rows >= fmt_out.n_rows)
-            return 0;
+        chunk_intern_.set_size(fmt_in.n_rows, fmt_in.n_cols, fmt_in.n_slices);
 
-        chunk_intern_.set_size(fmt_in);
-
-        return 1;
+        return Contract::supported_format;
     }
 
 private:

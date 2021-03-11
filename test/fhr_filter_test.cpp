@@ -31,24 +31,33 @@ int main(int argc, char * argv[])
 
     Pipeline pipeline(logger);
 
-    auto source_filter = new NpySource<T>(logger, filename_in);
-    pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
+    auto source_filter = std::make_unique<NpySource<T>>(logger, filename_in);
+    auto source_h = pipeline.add_filter(std::move(source_filter));
     auto fmt_data = source_filter->get_fmt();
-    arma::SizeCube fmt_in(fdperseg, fmt_data.n_cols, fmt_data.n_slices);
 
-    arma::SizeCube fmt_out(1, fmt_in.n_cols, fmt_in.n_slices);
-    auto fhr_filter = new filter::FHR<T, T, T>(logger, radius, period_max, threshold);
-    pipeline.add_filter(std::unique_ptr<Filter>(fhr_filter));
+    auto fhr_filter = std::make_unique<filter::FHR<T, T, T>>(logger, radius, period_max, threshold);
+    auto fhr_h = pipeline.add_filter(std::move(fhr_filter));
 
-    auto sink_filter_0 = new NpySink<T>(logger, fmt_data);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_0));
+    auto sink_filter_0 = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink0_h = pipeline.add_filter(std::move(sink_filter_0));
 
-    auto sink_filter_1 = new NpySink<T>(logger, fmt_data);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter_1));
+    auto sink_filter_1 = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink1_h = pipeline.add_filter(std::move(sink_filter_1));
 
-    pipeline.link<T>(source_filter, fhr_filter   , fmt_in);
-    pipeline.link<T>(fhr_filter   , sink_filter_0, fmt_out);
-    pipeline.link<T>(fhr_filter   , sink_filter_1, fmt_out);
+    pipeline.link<T>(source_h, "out", fhr_h  , "in");
+    pipeline.link<T>(fhr_h   , "fhr", sink0_h, "in");
+    pipeline.link<T>(fhr_h   , "cor", sink1_h, "in");
+
+    Format fmt_in  { fdperseg, fmt_data.n_cols, fmt_data.n_slices };
+    Format fmt_out {1, fmt_in.n_cols, fmt_in.n_slices };
+    source_h->set_output_format(fmt_in, "out");
+    fhr_h->set_input_format(fmt_in, "in");
+    fhr_h->set_output_format(fmt_out, "fhr");
+    fhr_h->set_output_format(fmt_out, "cor");
+    sink0_h->set_input_format(fmt_out, "in");
+    sink1_h->set_input_format(fmt_out, "in");
+    if (pipeline.negotiate_format() != Contract::supported_format)
+        throw dsp_error(Errc::format_negotiation_failed);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"

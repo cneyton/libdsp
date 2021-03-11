@@ -16,15 +16,21 @@ public:
         Filter(logger, "fhr"),
         radius_(radius), period_max_(period_max), threshold_(threshold)
     {
+        Pad in {.name = "in", .format = Format()};
+        Pad fhr {.name = "fhr", .format = Format()};
+        Pad cor {.name = "cor", .format = Format()};
+        input_pads_.insert({in.name, in});
+        output_pads_.insert({fhr.name, fhr});
+        output_pads_.insert({cor.name, cor});
     }
 
     int activate() override
     {
         log_debug(logger_, "fhr filter {} activated", name_);
 
-        auto input      = dynamic_cast<Link<T1>*>(inputs_.at(0));
-        auto output_fhr = dynamic_cast<Link<T2>*>(outputs_.at(0));
-        auto output_cor = dynamic_cast<Link<T3>*>(outputs_.at(1));
+        auto input      = dynamic_cast<Link<T1>*>(inputs_.at("in"));
+        auto output_fhr = dynamic_cast<Link<T2>*>(outputs_.at("fhr"));
+        auto output_cor = dynamic_cast<Link<T3>*>(outputs_.at("cor"));
         auto chunk_in   = std::make_shared<Chunk<T1>>();
 
         if (!input->pop(chunk_in)) {
@@ -38,8 +44,10 @@ public:
         auto fmt_in    = input->format();
         auto fmt_out   = output_fhr->format();
 
-        auto chunk_fhr = std::make_shared<Chunk<T2>>(fmt_out);
-        auto chunk_cor = std::make_shared<Chunk<T3>>(fmt_out);
+        auto chunk_fhr = std::make_shared<Chunk<T2>>(fmt_out.n_rows, fmt_out.n_cols,
+                                                     fmt_out.n_slices);
+        auto chunk_cor = std::make_shared<Chunk<T3>>(fmt_out.n_rows, fmt_out.n_cols,
+                                                     fmt_out.n_slices);
 
         for (uint k = 0; k < fmt_in.n_slices; k++) {
             for (uint j = 0; j < fmt_in.n_cols; j++) {
@@ -93,6 +101,22 @@ public:
     void reset() override
     {
         // nothing to do
+    }
+
+    Contract negotiate_format() override
+    {
+        auto fmt_in  = input_pads_["in"].format;
+        auto fmt_fhr = output_pads_["fhr"].format;
+        auto fmt_cor = output_pads_["cor"].format;
+
+        if (fmt_in.n_cols   != fmt_fhr.n_cols ||
+            fmt_in.n_slices != fmt_fhr.n_slices ||
+            fmt_in.n_rows   != 1 ||
+            fmt_fhr         != fmt_cor) {
+            return Contract::unsupported_format;
+        }
+
+        return Contract::supported_format;
     }
 
 private:

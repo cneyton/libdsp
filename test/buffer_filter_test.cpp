@@ -24,20 +24,27 @@ int main(int argc, char * argv[])
 
     Pipeline pipeline(logger);
 
-    auto source_filter = new NpySource<T>(logger, filename_in);
-    pipeline.add_filter(std::unique_ptr<Filter>(source_filter));
+    auto source_filter = std::make_unique<NpySource<T>>(logger, filename_in);
+    auto source_h = pipeline.add_filter(std::move(source_filter));
     auto fmt_data = source_filter->get_fmt();
-    arma::SizeCube fmt_in(1, fmt_data.n_cols, fmt_data.n_slices);
 
-    arma::SizeCube fmt_out(n_buffer, fmt_in.n_cols, fmt_in.n_slices);
-    auto buffer_filter = new filter::Buffer<T>(logger);
-    pipeline.add_filter(std::unique_ptr<Filter>(buffer_filter));
+    auto buffer_filter = std::make_unique<filter::Buffer<T>>(logger);
+    auto buffer_h = pipeline.add_filter(std::move(buffer_filter));
 
-    auto sink_filter = new NpySink<T>(logger, fmt_data);
-    pipeline.add_filter(std::unique_ptr<Filter>(sink_filter));
+    auto sink_filter = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink_h = pipeline.add_filter(std::move(sink_filter));
 
-    pipeline.link<T>(source_filter, buffer_filter, fmt_in);
-    pipeline.link<T>(buffer_filter, sink_filter, fmt_out);
+    pipeline.link<T>(source_h, "out", buffer_h, "in");
+    pipeline.link<T>(buffer_h, "out", sink_h, "in");
+
+    Format fmt_in  { 1, fmt_data.n_cols, fmt_data.n_slices };
+    Format fmt_out { n_buffer, fmt_in.n_cols, fmt_in.n_slices };
+    source_h->set_output_format(fmt_in, "out");
+    buffer_h->set_input_format(fmt_in, "in");
+    buffer_h->set_output_format(fmt_out, "out");
+    sink_h->set_input_format(fmt_out, "in");
+    if (pipeline.negotiate_format() != Contract::supported_format)
+        throw dsp_error(Errc::format_negotiation_failed);
 
     std::cout << "Input:\n"
               << "  type: " << typeid(T).name() << "\n"
