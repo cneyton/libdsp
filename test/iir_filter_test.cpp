@@ -32,13 +32,14 @@ int main(int argc, char * argv[])
     Pipeline pipeline(logger);
 
     auto source_filter = std::make_unique<NpySource<T>>(logger, filename_in);
-    auto source_h = pipeline.add_filter(std::move(source_filter));
     auto fmt_data = source_filter->get_fmt();
+    auto source_h = pipeline.add_filter(std::move(source_filter));
 
     auto iir_filter = std::make_unique<filter::IIR<T, double>>(logger, b, a);
     auto iir_h = pipeline.add_filter(std::move(iir_filter));
 
     auto sink_filter = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink_p = sink_filter.get();
     auto sink_h = pipeline.add_filter(std::move(sink_filter));
 
     pipeline.link<T>(source_h, "out", iir_h, "in");
@@ -62,7 +63,7 @@ int main(int argc, char * argv[])
     std::cout << "  a: "; a.t().print();
     std::cout << "------------------------------\n";
 
-    sink_filter->dump(filename_out);
+    sink_p->dump(filename_out);
 
     pipeline.print_stats();
 

@@ -51,12 +51,13 @@ int main(int argc, char * argv[])
     Pipeline pipeline(logger);
 
     auto source_filter = std::make_unique<NpySource<T_iq>>(logger, filename_in);
-    auto source_h = pipeline.add_filter(std::move(source_filter));
     auto fmt_data = source_filter->get_fmt();
+    auto source_h = pipeline.add_filter(std::move(source_filter));
 
     auto iir_filter_iq = std::make_unique<filter::IIR<T_iq, double>>(logger, b1, a1);
     auto iir_iq_h = pipeline.add_filter(std::move(iir_filter_iq));
 
+    arma::uword nperseg = nfft / nskip;
     auto roll_filter_iq = std::make_unique<filter::Roll<T_iq>>(logger, 4, nskip);
     auto roll_iq_h = pipeline.add_filter(std::move(roll_filter_iq));
 
@@ -69,16 +70,19 @@ int main(int argc, char * argv[])
     auto iir_filter_fd = std::make_unique<filter::IIR<T_fd, double>>(logger, b2, a2);
     auto iir_fd_h = pipeline.add_filter(std::move(iir_filter_fd));
 
-    auto roll_fd_filter = std::make_unique<filter::Roll<T_fd>>(logger, fdperseg, fdskip);
+    nperseg = fdperseg / fdskip;
+    auto roll_fd_filter = std::make_unique<filter::Roll<T_fd>>(logger, nperseg, 1);
     auto roll_fd_h = pipeline.add_filter(std::move(roll_fd_filter));
 
     auto fhr_filter = std::make_unique<filter::FHR<T_fd, T_fd, T_fd>>(logger, radius, period_max, threshold);
     auto fhr_h = pipeline.add_filter(std::move(fhr_filter));
 
     auto sink_filter_0 = std::make_unique<NpySink<T_fd>>(logger, fmt_data);
+    auto sink_p0 = sink_filter_0.get();
     auto sink0_h = pipeline.add_filter(std::move(sink_filter_0));
 
     auto sink_filter_1 = std::make_unique<NpySink<T_fd>>(logger, fmt_data);
+    auto sink_p1 = sink_filter_1.get();
     auto sink1_h = pipeline.add_filter(std::move(sink_filter_1));
 
     pipeline.link<T_iq>(source_h , "out", iir_iq_h , "in");
@@ -91,12 +95,12 @@ int main(int argc, char * argv[])
     pipeline.link<T_fd>(fhr_h    , "fhr", sink0_h  , "in");
     pipeline.link<T_fd>(fhr_h    , "cor", sink1_h  , "in");
 
-    Format fmt_in { nskip, fmt_data.n_cols, fmt_data.n_slices };
-    Format fmt_roll_iq { nfft, fmt_in.n_cols, fmt_in.n_slices };
-    Format fmt_fd{ 1, fmt_in.n_cols, fmt_in.n_slices };
-    Format fmt_buffer { fdskip, fmt_in.n_cols, fmt_in.n_slices };
+    Format fmt_in      { nskip   , fmt_data.n_cols, fmt_data.n_slices };
+    Format fmt_roll_iq { nfft    , fmt_in.n_cols, fmt_in.n_slices };
+    Format fmt_fd      { 1       , fmt_in.n_cols, fmt_in.n_slices };
+    Format fmt_buffer  { fdskip  , fmt_in.n_cols, fmt_in.n_slices };
     Format fmt_roll_fd { fdperseg, fmt_in.n_cols, fmt_in.n_slices };
-    Format fmt_out { 1, fmt_in.n_cols, fmt_in.n_slices };
+    Format fmt_out     { 1       , fmt_in.n_cols, fmt_in.n_slices };
 
     source_h->set_output_format(fmt_in, "out");
     iir_iq_h->set_input_format(fmt_in, "in");
@@ -138,8 +142,8 @@ int main(int argc, char * argv[])
     std::cout << "  a2: "; a2.t().print();
     std::cout << "------------------------------\n";
 
-    sink_filter_0->dump("fhr_" + filename_out);
-    sink_filter_1->dump("corr_" + filename_out);
+    sink_p0->dump("fhr_" + filename_out);
+    sink_p1->dump("corr_" + filename_out);
 
     pipeline.print_stats();
 

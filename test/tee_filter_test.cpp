@@ -24,16 +24,18 @@ int main(int argc, char * argv[])
     Pipeline pipeline(logger);
 
     auto source_filter = std::make_unique<NpySource<T>>(logger, filename_in);
-    auto source_h = pipeline.add_filter(std::move(source_filter));
     auto fmt_data = source_filter->get_fmt();
+    auto source_h = pipeline.add_filter(std::move(source_filter));
 
     auto tee_filter = std::make_unique<filter::Tee<T, N>>(logger);
     auto tee_h = pipeline.add_filter(std::move(tee_filter));
 
     auto sink_filter_0 = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink_p1 = sink_filter_0.get();
     auto sink0_h = pipeline.add_filter(std::move(sink_filter_0));
 
     auto sink_filter_1 = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink_p2 = sink_filter_1.get();
     auto sink1_h = pipeline.add_filter(std::move(sink_filter_1));
 
     pipeline.link<T>(source_h, "out", tee_h  , "in");
@@ -56,8 +58,8 @@ int main(int argc, char * argv[])
               << "  nb frames total: " << fmt_data.n_rows << "\n"
               << "------------------------------\n";
 
-    sink_filter_0->dump("out_1_" + filename_out);
-    sink_filter_1->dump("out_2_" + filename_out);
+    sink_p1->dump("out_1_" + filename_out);
+    sink_p2->dump("out_2_" + filename_out);
 
     pipeline.print_stats();
 

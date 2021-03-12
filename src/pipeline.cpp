@@ -114,24 +114,24 @@ int Pipeline::run_once()
 {
     for (auto& filter: filters_) {
         if (filter->is_ready()) {
-#ifdef DSP_PROFILE
-            auto start = std::chrono::high_resolution_clock::now();
-#endif
             try {
+#ifdef DSP_PROFILE
+                auto start = std::chrono::high_resolution_clock::now();
+#endif
                 [[maybe_unused]] int ret = filter->activate();
+                filter->reset_ready();
+#ifdef DSP_PROFILE
+                if (ret) {
+                    auto stop = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double> diff = stop - start;
+                    filter->update_stats(diff);
+                    update_stats(diff);
+                }
+#endif
             } catch (...) {
                 log_error(logger_, "failed to activate filter {}", filter->name());
                 /* TODO: manage error (rethrow exception ?) <23-10-20, cneyton> */
             }
-            filter->reset_ready();
-#ifdef DSP_PROFILE
-            if (ret) {
-                auto stop = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> diff = stop - start;
-                filter->update_stats(diff);
-                update_stats(diff);
-            }
-#endif
             return 1;
         }
     }

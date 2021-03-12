@@ -111,7 +111,7 @@ public:
 
         if (fmt_in.n_cols   != fmt_fhr.n_cols ||
             fmt_in.n_slices != fmt_fhr.n_slices ||
-            fmt_in.n_rows   != 1 ||
+            fmt_fhr.n_rows  != 1 ||
             fmt_fhr         != fmt_cor) {
             return Contract::unsupported_format;
         }

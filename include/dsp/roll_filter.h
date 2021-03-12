@@ -75,12 +75,12 @@ public:
 
     Contract negotiate_format() override
     {
-        auto in_fmt = input_pads_["in"].format;
-        auto out_fmt = output_pads_["in"].format;
+        auto fmt_in  = input_pads_["in"].format;
+        auto fmt_out = output_pads_["out"].format;
 
-        if ((in_fmt.n_cols != out_fmt.n_cols) ||
-            (in_fmt.n_slices != out_fmt.n_slices) ||
-            (in_fmt.n_rows * n_per_seg_ != out_fmt.n_slices)) {
+        if ((fmt_in.n_cols   != fmt_out.n_cols) ||
+            (fmt_in.n_slices != fmt_out.n_slices) ||
+            (fmt_in.n_rows * n_per_seg_ != fmt_out.n_rows)) {
             return Contract::unsupported_format;
         }
 

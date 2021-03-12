@@ -74,13 +74,17 @@ class NpySink: public Filter
 {
 public:
     NpySink(common::Logger logger, arma::SizeCube fmt):
-        Filter(logger, "sink"), data_(arma::Cube<T>(fmt)) {}
+        Filter(logger, "sink"), data_(arma::Cube<T>(fmt))
+    {
+        Pad p {.name="in", .format=Format()};
+        input_pads_.insert({p.name, p});
+    }
 
     int activate() override
     {
         log_debug(logger_, "{} filter activated, i = {}", name_, i_);
 
-        auto input = dynamic_cast<Link<T>*>(this->inputs_.at("in"));
+        auto input = dynamic_cast<Link<T>*>(inputs_.at("in"));
 
         int ret;
         auto chunk = std::make_shared<Chunk<T>>();
@@ -106,7 +110,7 @@ public:
 
     void dump(std::string filename)
     {
-        auto input = dynamic_cast<Link<T>*>(this->inputs_.at(0));
+        auto input = dynamic_cast<Link<T>*>(inputs_.at("in"));
         while (!input->eof()) {
             activate();
             this->pipeline_->run();

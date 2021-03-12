@@ -72,11 +72,11 @@ public:
     Contract negotiate_format() override
     {
         auto fmt_in  = input_pads_["in"].format;
-        auto fmt_out = output_pads_["in"].format;
+        auto fmt_out = output_pads_["out"].format;
 
-        if (fmt_in.n_cols != fmt_out.n_cols ||
+        if (fmt_in.n_cols   != fmt_out.n_cols ||
             fmt_in.n_slices != fmt_out.n_slices ||
-            fmt_in.n_rows != 1) {
+            fmt_out.n_rows  != 1) {
             return Contract::unsupported_format;
         }
 
