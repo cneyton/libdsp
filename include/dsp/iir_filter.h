@@ -28,8 +28,8 @@ public:
         output_pads_.insert({out.name, out});
     }
 
-    IIR(common::Logger logger, uint16_t nb_filters):
-        IIR(logger, nb_filters,
+    IIR(common::Logger logger):
+        IIR(logger,
             arma::Col<T2>(1, arma::fill::ones),
             arma::Col<T2>(1, arma::fill::ones))
     {
