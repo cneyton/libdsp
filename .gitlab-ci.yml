@@ -10,7 +10,7 @@ default_build:
     script:
         - mkdir build -p
         - cd build
-        - cmake ..
+        - cmake .. -DDSP_RUNTESTS=True
         - make
 
 release_build:
@@ -19,7 +19,7 @@ release_build:
     script:
         - mkdir build -p
         - cd build
-        - cmake ..
+        - cmake .. -DDSP_RUNTESTS=True
         - make
     artifacts:
         name: "${CI_BUILD_NAME}"
