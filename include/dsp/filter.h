@@ -3,14 +3,12 @@
 #include <chrono>
 #include <string>
 #include <vector>
-#include <deque>
 #include <map>
 
 #include <armadillo>
 
 #include "common/log.h"
 
-#include "dsp_error.h"
 #include "format.h"
 #include "pad.h"
 
@@ -22,7 +20,7 @@ class Pipeline;
 class Filter: public common::Log
 {
 public:
-    Filter(common::Logger logger, std::string_view name): Log(logger), name_(name) {}
+    Filter(common::Logger logger, std::string_view name);
     virtual ~Filter() = default;
 
     /**
@@ -31,14 +29,7 @@ public:
      * @param link Pointer to the link to add
      * @param pad_name Pad name where the link will be added
      */
-    void add_input(LinkInterface * link, const std::string& pad_name)
-    {
-        if (input_pads_.find(pad_name) == input_pads_.end())
-            throw dsp_error(Errc::pad_unknown);
-        if (inputs_.find(pad_name) != inputs_.end())
-            throw dsp_error(Errc::pad_occupied);
-        inputs_[pad_name]  = link;
-    }
+    void add_input(LinkInterface * link, const std::string& pad_name);
 
     /**
      * @brief Add an output link to the filter
@@ -46,61 +37,34 @@ public:
      * @param link Pointer to the link to add
      * @param pad_name Pad name where the link will be added
      */
-    void add_output(LinkInterface * link, const std::string& pad_name)
-    {
-        if (output_pads_.find(pad_name) == output_pads_.end())
-            throw dsp_error(Errc::pad_unknown);
-        if (outputs_.find(pad_name) != outputs_.end())
-            throw dsp_error(Errc::pad_occupied);
-        outputs_[pad_name]  = link;
-    }
+    void add_output(LinkInterface * link, const std::string& pad_name);
 
     /**
-     * This method is called when something must be done in a filter. The
-     * definition of that something depends on the semantic of the filter.
+     * @brief This method is called when something must be done in a filter.
+     * The definition of that something depends on the semantic of the filter.
      *
-     * \return 1 if the filter was activated
+     * @return 1 if the filter was activated
      *         0 if the filter wasn't activated
      */
     virtual int activate() = 0;
 
+    /**
+     * @brief Reset the filter to its initial state.
+     */
     virtual void reset()   = 0;
 
     /**
-     * @brief This method checks if input & output formats are compatible.
+     * @brief Checks if input & output formats are compatible.
      *
      * @return Contract::supported_format if input & output are compatible.
      *         Contract::unsupported_format is returned otherwise.
      */
     virtual Contract negotiate_format() = 0;
 
-    void set_input_format(const Format& f, const std::string& pad_name)
-    {
-        if (input_pads_.find(pad_name) == input_pads_.end())
-            throw dsp_error(Errc::pad_unknown);
-        input_pads_[pad_name].format = f;
-    }
-
-    void set_output_format(const Format& f, const std::string& pad_name)
-    {
-        if (output_pads_.find(pad_name) == output_pads_.end())
-            throw dsp_error(Errc::pad_unknown);
-        output_pads_[pad_name].format = f;
-    }
-
-    const Format& get_input_format(const std::string& pad_name)
-    {
-        if (input_pads_.find(pad_name) == input_pads_.end())
-            throw dsp_error(Errc::pad_unknown);
-        return input_pads_[pad_name].format;
-    }
-
-    const Format& get_output_format(const std::string& pad_name)
-    {
-        if (output_pads_.find(pad_name) == output_pads_.end())
-            throw dsp_error(Errc::pad_unknown);
-        return output_pads_[pad_name].format;
-    }
+    void set_input_format(const Format& f, const std::string& pad_name);
+    void set_output_format(const Format& f, const std::string& pad_name);
+    const Format& get_input_format(const std::string& pad_name);
+    const Format& get_output_format(const std::string& pad_name);
 
     bool is_ready() const noexcept {return ready_;}
     void set_ready()      noexcept {ready_ = true;}
@@ -114,18 +78,8 @@ public:
     // debug methods -----------------------------------------------------------
     void set_verbose()    {verbose_ = true;}
 
-    void update_stats(std::chrono::duration<double>& duration)
-    {
-        stats_.n_execs++;
-        stats_.durations.push_back(duration);
-    }
-
-    void reset_stats()
-    {
-        stats_.n_execs = 0;
-        stats_.durations.clear();
-    }
-
+    void update_stats(std::chrono::duration<double>& duration);
+    void reset_stats();
     arma::uword n_execs() const {return stats_.n_execs;}
 
     std::chrono::duration<double> total_exec_time() const

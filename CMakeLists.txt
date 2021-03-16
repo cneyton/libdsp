@@ -55,6 +55,7 @@ add_library(dsp STATIC)
 target_sources(dsp PRIVATE
     src/dsp_error.cpp
     src/pipeline.cpp
+    src/filter.cpp
     )
 target_include_directories(dsp PUBLIC include)
 target_link_libraries(dsp PUBLIC common sigpack cnpy-static z)

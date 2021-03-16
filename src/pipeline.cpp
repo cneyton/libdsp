@@ -2,7 +2,6 @@
 
 namespace dsp {
 
-
 Pipeline::Pipeline(common::Logger logger): Log(logger)
 {
     reset_stats();

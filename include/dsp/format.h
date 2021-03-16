@@ -2,6 +2,8 @@
 
 #include <armadillo>
 
+namespace dsp {
+
 enum class Contract {
     unsupported_format,
     supported_format,
@@ -30,3 +32,5 @@ bool operator!=(const Format& lhs, const Format& rhs)
 {
     return !(lhs == rhs);
 }
+
+} /* namespace dsp */
