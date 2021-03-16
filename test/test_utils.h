@@ -73,8 +73,8 @@ template<typename T>
 class NpySink: public Filter
 {
 public:
-    NpySink(common::Logger logger, arma::SizeCube fmt):
-        Filter(logger, "sink"), data_(arma::Cube<T>(fmt))
+    NpySink(common::Logger logger, arma::SizeCube fmt, std::string_view name = "sink"):
+        Filter(logger, name), data_(arma::Cube<T>(fmt))
     {
         Pad p {.name="in", .format=Format()};
         input_pads_.insert({p.name, p});

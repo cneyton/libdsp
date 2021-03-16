@@ -16,12 +16,10 @@ int main(int argc, char * argv[])
     std::string filename_out(argv[2]);
     std::string filename_params(argv[3]);
 
-    //cnpy::NpyArray period_np  = cnpy::npz_load(filename_params, "period");
     cnpy::NpyArray nskip_np   = cnpy::npz_load(filename_params, "nskip");
     cnpy::NpyArray a_np       = cnpy::npz_load(filename_params, "a");
     cnpy::NpyArray b_np       = cnpy::npz_load(filename_params, "b");
 
-    //arma::uword period(*period_np.data<arma::uword>());
     arma::uword nskip(*nskip_np.data<arma::uword>());
     arma::vec b(b_np.data<double>(), b_np.shape.at(0));
     arma::vec a(a_np.data<double>(), a_np.shape.at(0));
@@ -35,7 +33,8 @@ int main(int argc, char * argv[])
     auto fmt_data = source_filter->get_fmt();
     auto source_h = pipeline.add_filter(std::move(source_filter));
 
-    auto iir_filter = std::make_unique<filter::IIR<T, double>>(logger, b, a);
+    auto iir_filter = std::make_unique<filter::IIR<T, double>>(logger);
+    iir_filter->load_parameters(filename_params);
     auto iir_h = pipeline.add_filter(std::move(iir_filter));
 
     auto sink_filter = std::make_unique<NpySink<T>>(logger, fmt_data);

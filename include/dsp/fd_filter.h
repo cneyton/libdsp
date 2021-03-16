@@ -6,18 +6,30 @@
 
 namespace dsp::filter {
 
+
+/**
+ * @brief Compute the doppler frequency.
+ *
+ * @tparam T1 Input data type
+ * @tparam T2 Output data type
+ */
 template<typename T1 = arma::cx_double, typename T2 = double>
 class FD: public Filter
 {
 public:
-    FD(common::Logger logger, arma::uword nfft, arma::vec window):
-        Filter(logger, "fd"), nfft_(nfft),
+    FD(common::Logger logger, std::string_view name, arma::uword nfft, arma::vec window):
+        Filter(logger, name), nfft_(nfft),
         fftw_(sp::FFTW(nfft, FFTW_MEASURE)), window_(window)
     {
         Pad in  {.name = "in" , .format = Format()};
         Pad out {.name = "out", .format = Format()};
         input_pads_.insert({in.name, in});
         output_pads_.insert({out.name, out});
+    }
+
+    FD(common::Logger logger, arma::uword nfft, arma::vec window):
+        FD(logger, "fd", nfft, window)
+    {
     }
 
     int activate() override

@@ -9,7 +9,8 @@ template<typename T>
 class Sink: public Filter
 {
 public:
-    Sink(common::Logger logger): Filter(logger, "sink")
+    Sink(common::Logger logger, std::string_view name = "sink"):
+        Filter(logger, name)
     {
         Pad p {.name="in", .format=Format()};
         input_pads_.insert({p.name, p});

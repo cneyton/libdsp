@@ -9,18 +9,22 @@
 namespace dsp::filter {
 
 /**
- * Buffer filter: concatenate input chunks into larger output chunks
+ * @brief Concatenate input chunks into larger output chunks.
+ *
  * Shared pointers to the input chunks are stored inside an internal queue until
  * enough are present. The data is then copied to the output chunk and the queue
  * is cleared. The remaining data is stored inside an internal chunk for the next
  * output.
  * NB: fmt_in.n_rows must be < fmt_out.n_rows (format negotiation will fail otherwise)
+ *
+ * @tparam T Type of data processed by the filter.
  */
 template<typename T>
 class Buffer: public Filter
 {
 public:
-    Buffer(common::Logger logger): Filter(logger, "buffer")
+    Buffer(common::Logger logger, std::string_view name = "buffer"):
+        Filter(logger, name)
     {
         Pad in  {.name = "in" , .format = Format()};
         Pad out {.name = "out", .format = Format()};

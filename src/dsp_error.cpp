@@ -13,6 +13,7 @@ std::string ErrorCategory::message(int e) const
     case Errc::pad_unknown:               return "pad unknown";
     case Errc::format_negotiation_failed: return "format negotation failed";
     case Errc::invalid_parameters:        return "invalid parameters";
+    case Errc::duplicate_filter:          return "duplicate filter";
     default:                              return "unknown error code";
     }
 }

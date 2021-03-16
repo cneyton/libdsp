@@ -18,21 +18,16 @@ template<typename T1, typename T2>
 class IIR: public Filter
 {
 public:
-    IIR(common::Logger logger, const arma::vec& b, const arma::vec& a):
-        Filter(logger, "iir"),
+    IIR(common::Logger logger, std::string_view name = "iir",
+        const arma::Col<T2>& b = arma::Col<T2>(1, arma::fill::ones),
+        const arma::Col<T2>& a = arma::Col<T2>(1, arma::fill::ones)):
+        Filter(logger, name),
         b_(b), a_(a)
     {
         Pad in  {.name = "in" , .format = Format()};
         Pad out {.name = "out", .format = Format()};
         input_pads_.insert({in.name, in});
         output_pads_.insert({out.name, out});
-    }
-
-    IIR(common::Logger logger):
-        IIR(logger,
-            arma::Col<T2>(1, arma::fill::ones),
-            arma::Col<T2>(1, arma::fill::ones))
-    {
     }
 
     int activate() override

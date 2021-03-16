@@ -54,7 +54,7 @@ int main(int argc, char * argv[])
     auto fmt_data = source_filter->get_fmt();
     auto source_h = pipeline.add_filter(std::move(source_filter));
 
-    auto iir_filter_iq = std::make_unique<filter::IIR<T_iq, double>>(logger, b1, a1);
+    auto iir_filter_iq = std::make_unique<filter::IIR<T_iq, double>>(logger, "iir_iq", b1, a1);
     auto iir_iq_h = pipeline.add_filter(std::move(iir_filter_iq));
 
     arma::uword nperseg = nfft / nskip;
@@ -67,7 +67,7 @@ int main(int argc, char * argv[])
     auto buffer_filter = std::make_unique<filter::Buffer<T_fd>>(logger);
     auto buffer_h = pipeline.add_filter(std::move(buffer_filter));
 
-    auto iir_filter_fd = std::make_unique<filter::IIR<T_fd, double>>(logger, b2, a2);
+    auto iir_filter_fd = std::make_unique<filter::IIR<T_fd, double>>(logger, "iir_fd", b2, a2);
     auto iir_fd_h = pipeline.add_filter(std::move(iir_filter_fd));
 
     nperseg = fdperseg / fdskip;
@@ -77,11 +77,11 @@ int main(int argc, char * argv[])
     auto fhr_filter = std::make_unique<filter::FHR<T_fd, T_fd, T_fd>>(logger, radius, period_max, threshold);
     auto fhr_h = pipeline.add_filter(std::move(fhr_filter));
 
-    auto sink_filter_0 = std::make_unique<NpySink<T_fd>>(logger, fmt_data);
+    auto sink_filter_0 = std::make_unique<NpySink<T_fd>>(logger, fmt_data, "sink_fhr");
     auto sink_p0 = sink_filter_0.get();
     auto sink0_h = pipeline.add_filter(std::move(sink_filter_0));
 
-    auto sink_filter_1 = std::make_unique<NpySink<T_fd>>(logger, fmt_data);
+    auto sink_filter_1 = std::make_unique<NpySink<T_fd>>(logger, fmt_data, "sink_cor");
     auto sink_p1 = sink_filter_1.get();
     auto sink1_h = pipeline.add_filter(std::move(sink_filter_1));
 

@@ -3,6 +3,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <vector>
+#include <map>
 #include <memory>
 #include <chrono>
 
@@ -20,7 +21,7 @@ public:
     Pipeline(common::Logger logger);
 
     /**
-     * @brief Reset filters & links
+     * @brief Reset filters & links.
      *
      * For each filter call the reset method and reset eof on
      * each link.
@@ -48,12 +49,22 @@ public:
     void wakeup();
 
     /**
-     * Add a filter to the pipeline.
+     * @brief Add a filter to the pipeline.
+     *
      * Transfers ownership of the pointer to the pipeline
-     * \return Handle to the filter
+     *
+     * @return Handle to the filter
      */
     /* TODO: maybe this step could be skipped if we do it during link <13-01-21, cneyton> */
     Filter * add_filter(std::unique_ptr<Filter> filter);
+
+    /**
+     * @brief Get the filter with the given name from the pipeline.
+     *
+     * @return Handle to the filter if it's in the pipeline
+     *         nullptr otherwise
+     */
+    Filter * get_filter(const std::string& name);
 
     Contract negotiate_format();
 
@@ -71,10 +82,9 @@ public:
         links_.push_back(std::move(link));
     }
 
-
 private:
-    std::vector<std::unique_ptr<Filter>>         filters_;
-    std::vector<std::unique_ptr<LinkInterface>>  links_;
+    std::map<std::string, std::unique_ptr<Filter>> filters_;
+    std::vector<std::unique_ptr<LinkInterface>>    links_;
 
     std::condition_variable cv_;
     std::mutex              mutex_;
@@ -100,7 +110,7 @@ private:
      * Browse filters in the pipeline looking for filters ready to activate.
      * Returns after the activation of a filter or after browsing all filters.
      *
-     * \return 1 if a filter was activated
+     * @return 1 if a filter was activated
      *         0 if no filter was activated
      */
     int run_once();

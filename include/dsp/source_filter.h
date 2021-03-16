@@ -25,7 +25,8 @@ template<typename T1, typename T2>
 class Source: public Filter, public SourceInterface
 {
 public:
-    Source(common::Logger logger, std::string_view name): Filter(logger, name)
+    Source(common::Logger logger, std::string_view name = "source"):
+        Filter(logger, name)
     {
         Pad p {.name="out", .format=Format()};
         output_pads_.insert({p.name, p});

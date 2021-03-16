@@ -9,7 +9,8 @@ template<typename T, arma::uword N>
 class Tee: public Filter
 {
 public:
-    Tee(common::Logger logger): Filter(logger, "tee")
+    Tee(common::Logger logger, std::string_view name = "tee"):
+        Filter(logger, name)
     {
         Pad in  {.name = "in" , .format = Format()};
         input_pads_.insert({in.name, in});

@@ -38,7 +38,8 @@ int main(int argc, char * argv[])
     auto fmt_data = source_filter->get_fmt();
     auto source_h = pipeline.add_filter(std::move(source_filter));
 
-    auto iir_filter = std::make_unique<filter::IIR<T1, double>>(logger, b, a);
+    auto iir_filter = std::make_unique<filter::IIR<T1, double>>(logger);
+    iir_filter->load_parameters(filename_params);
     auto iir_h = pipeline.add_filter(std::move(iir_filter));
 
     arma::uword nperseg = nfft / nskip;

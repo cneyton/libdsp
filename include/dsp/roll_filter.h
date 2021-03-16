@@ -20,13 +20,19 @@ template<typename T>
 class Roll: public Filter
 {
 public:
-    Roll(common::Logger logger, arma::uword n_per_seg, arma::uword n_skip):
-        Filter(logger, "roll"), n_skip_(n_skip), n_per_seg_(n_per_seg)
+    Roll(common::Logger logger, std::string_view name,
+         arma::uword n_per_seg, arma::uword n_skip):
+        Filter(logger, name), n_skip_(n_skip), n_per_seg_(n_per_seg)
     {
         Pad in  {.name = "in" , .format = Format()};
         Pad out {.name = "out", .format = Format()};
         input_pads_.insert({in.name, in});
         output_pads_.insert({out.name, out});
+    }
+
+    Roll(common::Logger logger, arma::uword n_per_seg, arma::uword n_skip):
+        Roll(logger, "roll", n_per_seg, n_skip)
+    {
     }
 
     int activate() override

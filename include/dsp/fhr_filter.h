@@ -12,8 +12,9 @@ template<typename T1 = double, typename T2 = double, typename T3 = T2>
 class FHR: public Filter
 {
 public:
-    FHR(common::Logger logger, arma::uword radius, arma::uword period_max, T3 threshold):
-        Filter(logger, "fhr"),
+    FHR(common::Logger logger, std::string_view name,
+        arma::uword radius, arma::uword period_max, T3 threshold):
+        Filter(logger, name),
         radius_(radius), period_max_(period_max), threshold_(threshold)
     {
         Pad in {.name = "in", .format = Format()};
@@ -22,6 +23,11 @@ public:
         input_pads_.insert({in.name, in});
         output_pads_.insert({fhr.name, fhr});
         output_pads_.insert({cor.name, cor});
+    }
+
+    FHR(common::Logger logger, arma::uword radius, arma::uword period_max, T3 threshold):
+        FHR(logger, "fhr", radius, period_max, threshold)
+    {
     }
 
     int activate() override

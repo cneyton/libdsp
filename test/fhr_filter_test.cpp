@@ -38,11 +38,11 @@ int main(int argc, char * argv[])
     auto fhr_filter = std::make_unique<filter::FHR<T, T, T>>(logger, radius, period_max, threshold);
     auto fhr_h = pipeline.add_filter(std::move(fhr_filter));
 
-    auto sink_filter_0 = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink_filter_0 = std::make_unique<NpySink<T>>(logger, fmt_data, "sink_fhr");
     auto sink_p0 = sink_filter_0.get();
     auto sink0_h = pipeline.add_filter(std::move(sink_filter_0));
 
-    auto sink_filter_1 = std::make_unique<NpySink<T>>(logger, fmt_data);
+    auto sink_filter_1 = std::make_unique<NpySink<T>>(logger, fmt_data, "sink_cor");
     auto sink_p1 = sink_filter_1.get();
     auto sink1_h = pipeline.add_filter(std::move(sink_filter_1));
 
