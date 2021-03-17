@@ -7,7 +7,6 @@
 
 #include "filter.h"
 #include "link.h"
-#include "pad.h"
 #include "format.h"
 #include "type.h"
 

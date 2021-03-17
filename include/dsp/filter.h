@@ -10,12 +10,17 @@
 #include "common/log.h"
 
 #include "format.h"
-#include "pad.h"
 
 namespace dsp {
 
 class LinkInterface;
 class Pipeline;
+
+struct Pad
+{
+    std::string    name;
+    Format         format;
+};
 
 class Filter: public common::Log
 {
