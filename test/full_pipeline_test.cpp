@@ -58,7 +58,7 @@ int main(int argc, char * argv[])
     auto iir_iq_h = pipeline.add_filter(std::move(iir_filter_iq));
 
     arma::uword nperseg = nfft / nskip;
-    auto roll_filter_iq = std::make_unique<filter::Roll<T_iq>>(logger, 4, nskip);
+    auto roll_filter_iq = std::make_unique<filter::Roll<T_iq>>(logger, "roll_iq", nperseg, 1);
     auto roll_iq_h = pipeline.add_filter(std::move(roll_filter_iq));
 
     auto fd_filter = std::make_unique<filter::FD<T_iq, T_fd>>(logger, nfft, arma::vec(nfft, arma::fill::ones));
@@ -71,7 +71,7 @@ int main(int argc, char * argv[])
     auto iir_fd_h = pipeline.add_filter(std::move(iir_filter_fd));
 
     nperseg = fdperseg / fdskip;
-    auto roll_fd_filter = std::make_unique<filter::Roll<T_fd>>(logger, nperseg, 1);
+    auto roll_fd_filter = std::make_unique<filter::Roll<T_fd>>(logger, "roll_fd", nperseg, 1);
     auto roll_fd_h = pipeline.add_filter(std::move(roll_fd_filter));
 
     auto fhr_filter = std::make_unique<filter::FHR<T_fd, T_fd, T_fd>>(logger, radius, period_max, threshold);
