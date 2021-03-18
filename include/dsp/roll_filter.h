@@ -52,8 +52,8 @@ public:
         chunk_queue_.push_back(chunk_in);
         i_++;
 
-        auto fmt_in  = input->format();
-        auto fmt_out = output->format();
+        const auto fmt_in  = input->format();
+        const auto fmt_out = output->format();
 
         // first filling of the queue
         if (i_ < n_per_seg_)
@@ -64,7 +64,9 @@ public:
             return 0;
         }
 
-        auto chunk_out = std::make_shared<Chunk<T>>(fmt_out.n_rows, fmt_out.n_cols, fmt_out.n_slices);
+        auto chunk_out = std::make_shared<Chunk<T>>(chunk_queue_.front()->timestamp,
+                                                    chunk_queue_.front()->sample_period,
+                                                    fmt_out);
         for (arma::uword i = 0; i < n_per_seg_; ++i) {
             chunk_out->rows(i * fmt_in.n_rows, (i+1) * fmt_in.n_rows - 1) = *(chunk_queue_[i]);
         }

@@ -44,8 +44,9 @@ public:
             return 0;
         }
 
-        auto size = output->format();
-        auto chunk_out = std::make_shared<Chunk<T1>>(size.n_rows, size.n_cols, size.n_slices);
+        const auto size = output->format();
+        auto chunk_out = std::make_shared<Chunk<T1>>(chunk_in->timestamp, chunk_in->sample_period,
+                                                     size);
         uint n = 0;
         for (uint k = 0; k < size.n_slices; k++) {
             for (uint j = 0; j < size.n_cols; j++) {

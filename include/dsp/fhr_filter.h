@@ -47,13 +47,12 @@ public:
             return 0;
         }
 
-        auto fmt_in    = input->format();
-        auto fmt_out   = output_fhr->format();
+        const auto fmt_in  = input->format();
+        const auto fmt_out = output_fhr->format();
 
-        auto chunk_fhr = std::make_shared<Chunk<T2>>(fmt_out.n_rows, fmt_out.n_cols,
-                                                     fmt_out.n_slices);
-        auto chunk_cor = std::make_shared<Chunk<T3>>(fmt_out.n_rows, fmt_out.n_cols,
-                                                     fmt_out.n_slices);
+        arma::uword sample_period = chunk_in->sample_period * fmt_out.n_rows;
+        auto chunk_fhr = std::make_shared<Chunk<T2>>(chunk_in->timestamp, sample_period, fmt_out);
+        auto chunk_cor = std::make_shared<Chunk<T3>>(chunk_in->timestamp, sample_period, fmt_out);
 
         for (uint k = 0; k < fmt_in.n_slices; k++) {
             for (uint j = 0; j < fmt_in.n_cols; j++) {

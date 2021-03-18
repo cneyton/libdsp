@@ -16,7 +16,28 @@
 namespace dsp {
 
 template<typename T>
-using Chunk = arma::Cube<T>;
+struct Chunk: public arma::Cube<T>
+{
+    const arma::uword timestamp;     /**< timestamp in ms */
+    const arma::uword sample_period; /**< sample period in ms */
+
+    template<typename... Args>
+    Chunk(Args&&... args):
+        arma::Cube<T>(std::forward<Args>(args)...),
+        timestamp {0}, sample_period {1}
+    {}
+
+    Chunk(arma::uword tmstp, arma::uword sp, const Format& fmt):
+        arma::Cube<T>(fmt.n_rows, fmt.n_cols, fmt.n_slices),
+        timestamp {tmstp}, sample_period {sp}
+    {}
+
+    template<typename... Args>
+    Chunk(arma::uword tmstp, arma::uword sp, Args&&... args):
+        arma::Cube<T>(std::forward<Args>(args)...),
+        timestamp {tmstp}, sample_period {sp}
+    {}
+};
 
 class LinkInterface
 {

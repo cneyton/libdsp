@@ -14,7 +14,7 @@ namespace dsp {
 
 struct SourceInterface
 {
-    virtual void push_frame(std::string_view frame) = 0;
+    virtual void push_frame(std::string_view frame, uint32_t timestamp) = 0;
     virtual void eof() = 0;
 };
 
@@ -71,14 +71,14 @@ public:
         return Contract::supported_format;
     }
 
-    void push_frame(std::string_view frame) override
+    void push_frame(std::string_view frame, uint32_t timestamp) override
     {
         Format fmt = output_pads_["out"].format;
         size_t frame_size = expected_frame_size(fmt);
 
         if (frame_nb_ == 0)
             // chunk_ will be overwritten if not null
-            chunk_ = std::make_unique<Chunk<T2>>(fmt.n_rows, fmt.n_cols, fmt.n_slices);
+            chunk_ = std::make_unique<Chunk<T2>>(timestamp, sample_period_, fmt);
 
         if (frame.size() != frame_size) {
             log_warn(logger_, "frame size ({}) doesn't match expected size ({}), pushing invalid frame",
@@ -106,8 +106,9 @@ public:
     }
 
 private:
-    arma::uword     frame_nb_ = 0;
-    bool            eof_ = false;
+    arma::uword frame_nb_      = 0;
+    arma::uword sample_period_ = 1;
+    bool        eof_           = false;
 
     using elem_type = std::unique_ptr<Chunk<T2>>;
     elem_type             chunk_ = nullptr;

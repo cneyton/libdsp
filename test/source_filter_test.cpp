@@ -19,7 +19,7 @@ int main(int argc, char * argv[])
 
     Pipeline pipeline(logger);
 
-    auto source_filter = std::make_unique<NpySource<T>>(logger, filename_in);
+    auto source_filter = std::make_unique<NpySource<T>>(logger, filename_in, 1);
     auto fmt_data = source_filter->get_fmt();
     auto source_h = pipeline.add_filter(std::move(source_filter));
 

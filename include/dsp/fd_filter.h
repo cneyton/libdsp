@@ -46,10 +46,11 @@ public:
             return 0;
         }
 
-        auto fmt_in    = input->format();
-        auto fmt_out   = output->format();
-        auto chunk_out = std::make_shared<Chunk<T2>>(fmt_out.n_rows, fmt_out.n_cols,
-                                                     fmt_out.n_slices);
+        const auto fmt_in  = input->format();
+        const auto fmt_out = output->format();
+        auto chunk_out = std::make_shared<Chunk<T2>>(chunk_in->timestamp,
+                                                     chunk_in->sample_period * fmt_in.n_rows,
+                                                     fmt_out);
 
         /* TODO: add zero padding and windowing  <26-03-20, cneyton> */
         arma::Col<T2> w   = arma::regspace<arma::Col<T2>>(0, nfft_-1) - static_cast<T2>(nfft_)/2;

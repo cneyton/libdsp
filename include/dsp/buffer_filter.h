@@ -47,16 +47,22 @@ public:
         }
         chunk_queue_.push_back(chunk_in);
 
-        auto fmt_in  = input->format();
-        auto fmt_out = output->format();
+        const auto fmt_in  = input->format();
+        const auto fmt_out = output->format();
 
         i_++;
         if (n_intern_ + fmt_in.n_rows * i_ < fmt_out.n_rows)
             return 0;
 
         i_ = 0;
-        auto chunk_out = std::make_shared<Chunk<T>>(fmt_out.n_rows, fmt_out.n_cols,
-                                                     fmt_out.n_slices);
+        arma::uword timestamp = chunk_queue_.front()->timestamp;
+        arma::uword t_intern  = n_intern_ * chunk_in->sample_period;
+        if (t_intern > timestamp) {
+            log_error(logger_, "invalid timestamp");
+        } else {
+            timestamp -= t_intern;
+        }
+        auto chunk_out = std::make_shared<Chunk<T>>(timestamp, chunk_in->sample_period, fmt_out);
 
         // first copy the internal chunk
         if (n_intern_ != 0) {

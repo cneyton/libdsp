@@ -12,9 +12,9 @@ template<typename T>
 class NpySource: public Filter
 {
 public:
-    NpySource(common::Logger logger, std::string filename):
+    NpySource(common::Logger logger, std::string filename, arma::uword sample_period):
         Filter(logger, "npy source"),
-        filename_(filename)
+        filename_(filename), sample_period_{sample_period}
     {
         Pad p {.name="out", .format=Format()};
         output_pads_.insert({p.name, p});
@@ -36,7 +36,8 @@ public:
         arma::uword row_beg = i_ * fmt.n_rows;
         arma::uword row_end = (i_+1) * fmt.n_rows;
         if (row_end <= data_.n_rows) {
-            auto chunk = std::make_shared<Chunk<T>>(data_.rows(row_beg, row_end - 1));
+            auto chunk = std::make_shared<Chunk<T>>(row_beg, sample_period_,
+                                                    data_.rows(row_beg, row_end - 1));
             output->push(chunk);
             i_++;
             return 1;
@@ -66,6 +67,7 @@ private:
     std::string    filename_;
     arma::Cube<T>  data_;
     arma::uword    i_ = 0;
+    arma::uword    sample_period_;
 };
 
 
@@ -85,12 +87,10 @@ public:
         log_debug(logger_, "{} filter activated, i = {}", name_, i_);
 
         auto input = dynamic_cast<Link<T>*>(inputs_.at("in"));
-
-        int ret;
         auto chunk = std::make_shared<Chunk<T>>();
-        ret = input->pop(chunk);
-        common_die_zero(this->logger_, ret, -1, "failed to pop chunk");
-        if (!ret) return 0;
+
+        if (!input->pop(chunk))
+            return 0;
 
         data_.rows(i_ * chunk->n_rows, (i_+1) * chunk->n_rows - 1) = *chunk;
         i_++;
