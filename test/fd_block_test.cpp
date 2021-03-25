@@ -42,8 +42,7 @@ int main(int argc, char * argv[])
     iir_filter->load_parameters(filename_params);
     auto iir_h = pipeline.add_filter(std::move(iir_filter));
 
-    arma::uword nperseg = nfft / nskip;
-    auto roll_filter = std::make_unique<filter::Roll<T1>>(logger, nperseg, 1);
+    auto roll_filter = std::make_unique<filter::Roll<T1>>(logger, 1);
     auto roll_h = pipeline.add_filter(std::move(roll_filter));
 
     auto fd_filter = std::make_unique<filter::FD<T1, T2>>(logger, nfft, arma::vec(nfft, arma::fill::ones));

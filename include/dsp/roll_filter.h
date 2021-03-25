@@ -9,10 +9,14 @@
 namespace dsp::filter {
 
 /**
- * Concatenate 'n_per_seg' input chunks into larger output chunks with overlap.
+ * @brief Concatenate input chunks into larger output chunks with overlap.
+ *
  * Shared pointers to the input chunks are stored inside an internal queue until
- * enough are present. The data is then copied to the output chunk. 'n_skip' chunk
+ * enough are present. The data is then copied to the output chunk. 'skip' chunk
  * are then cleared.
+
+ * NB: fmt_out.n_rows must be a multiple of fmt_out.n_rows (format negotiation
+ * will fail otherwise)
  *
  * @tparam T chunk type
  */
@@ -20,9 +24,8 @@ template<typename T>
 class Roll: public Filter
 {
 public:
-    Roll(common::Logger logger, std::string_view name,
-         arma::uword n_per_seg, arma::uword n_skip):
-        Filter(logger, name), n_skip_(n_skip), n_per_seg_(n_per_seg)
+    Roll(common::Logger logger, std::string_view name, arma::uword skip):
+        Filter(logger, name), skip_(skip)
     {
         Pad in  {.name = "in" , .format = Format()};
         Pad out {.name = "out", .format = Format()};
@@ -30,8 +33,8 @@ public:
         output_pads_.insert({out.name, out});
     }
 
-    Roll(common::Logger logger, arma::uword n_per_seg, arma::uword n_skip):
-        Roll(logger, "roll", n_per_seg, n_skip)
+    Roll(common::Logger logger, arma::uword skip):
+        Roll(logger, "roll", skip)
     {
     }
 
@@ -56,10 +59,10 @@ public:
         const auto fmt_out = output->format();
 
         // first filling of the queue
-        if (i_ < n_per_seg_)
+        if (i_ < queue_size_)
             return 0;
 
-        if ((i_ - n_per_seg_) % n_skip_ != 0) {
+        if ((i_ - queue_size_) % skip_ != 0) {
             chunk_queue_.pop_front();
             return 0;
         }
@@ -67,7 +70,7 @@ public:
         auto chunk_out = std::make_shared<Chunk<T>>(chunk_queue_.front()->timestamp,
                                                     chunk_queue_.front()->sample_period,
                                                     fmt_out);
-        for (arma::uword i = 0; i < n_per_seg_; ++i) {
+        for (arma::uword i = 0; i < queue_size_; ++i) {
             chunk_out->rows(i * fmt_in.n_rows, (i+1) * fmt_in.n_rows - 1) = *(chunk_queue_[i]);
         }
         chunk_queue_.pop_front();
@@ -88,18 +91,20 @@ public:
 
         if ((fmt_in.n_cols   != fmt_out.n_cols) ||
             (fmt_in.n_slices != fmt_out.n_slices) ||
-            (fmt_in.n_rows * n_per_seg_ != fmt_out.n_rows)) {
+            (fmt_out.n_rows % fmt_in.n_rows != 0)) {
             return Contract::unsupported_format;
         }
+
+        queue_size_ = fmt_out.n_rows / fmt_in.n_rows;
 
         return Contract::supported_format;
     }
 
 private:
-    arma::uword n_skip_;
+    arma::uword skip_;
     arma::uword i_ = 0;
     std::deque<std::shared_ptr<Chunk<T>>> chunk_queue_;
-    arma::uword n_per_seg_;
+    arma::uword queue_size_;
 };
 
 } /* namespace dsp::filter */

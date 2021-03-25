@@ -23,12 +23,10 @@ int main(int argc, char * argv[])
 
 
     cnpy::NpyArray nskip_np   = cnpy::npz_load(filename_params, "nskip");
-    cnpy::NpyArray nperseg_np = cnpy::npz_load(filename_params, "nperseg");
     cnpy::NpyArray n_in_np    = cnpy::npz_load(filename_params, "n_in");
     cnpy::NpyArray n_out_np   = cnpy::npz_load(filename_params, "n_out");
 
     arma::uword nskip(*nskip_np.data<arma::uword>());
-    arma::uword nperseg(*nperseg_np.data<arma::uword>());
     arma::uword n_in(*n_in_np.data<arma::uword>());
     arma::uword n_out(*n_out_np.data<arma::uword>());
 
@@ -37,7 +35,7 @@ int main(int argc, char * argv[])
     auto fmt_data = source_filter->get_fmt();
     auto source_h = pipeline.add_filter(std::move(source_filter));
 
-    auto roll_filter = std::make_unique<filter::Roll<T>>(logger, nperseg, nskip);
+    auto roll_filter = std::make_unique<filter::Roll<T>>(logger, nskip);
     auto roll_h = pipeline.add_filter(std::move(roll_filter));
 
     auto sink_filter = std::make_unique<NpySink<T>>(logger, fmt_data);
@@ -47,7 +45,7 @@ int main(int argc, char * argv[])
     pipeline.link<T>(source_h, "out", roll_h, "in");
     pipeline.link<T>(roll_h, "out", sink_h, "in");
 
-    Format fmt_in { n_in, fmt_data.n_cols, fmt_data.n_slices };
+    Format fmt_in  { n_in, fmt_data.n_cols, fmt_data.n_slices };
     Format fmt_out { n_out, fmt_in.n_cols, fmt_in.n_slices };
     source_h->set_output_format(fmt_in, "out");
     roll_h->set_input_format(fmt_in, "in");
