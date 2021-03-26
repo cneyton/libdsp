@@ -73,12 +73,13 @@ public:
 
     void push_frame(std::string_view frame, uint32_t timestamp) override
     {
-        Format fmt = output_pads_["out"].format;
+        const Format fmt = output_pads_["out"].format;
         size_t frame_size = expected_frame_size(fmt);
 
         if (frame_nb_ == 0)
             // chunk_ will be overwritten if not null
-            chunk_ = std::make_unique<Chunk<T2>>(timestamp, sample_period_, fmt);
+            chunk_ = std::make_unique<Chunk<T2>>(static_cast<arma::uword>(timestamp),
+                                                 sample_period_, fmt);
 
         if (frame.size() != frame_size) {
             log_warn(logger_, "frame size ({}) doesn't match expected size ({}), pushing invalid frame",
