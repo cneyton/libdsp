@@ -12,8 +12,9 @@ template<typename T>
 class NpySource: public Filter
 {
 public:
-    NpySource(common::Logger logger, std::string filename, arma::uword sample_period):
-        Filter(logger, "npy source"),
+    NpySource(common::Logger logger, std::string filename, arma::uword sample_period = 1,
+              std::string name = "npy_source"):
+        Filter(logger, name),
         filename_(filename), sample_period_{sample_period}
     {
         Pad p {.name="out", .format=Format()};
@@ -91,6 +92,10 @@ public:
 
         if (!input->pop(chunk))
             return 0;
+
+
+        if (verbose_)
+            chunk->print();
 
         data_.rows(i_ * chunk->n_rows, (i_+1) * chunk->n_rows - 1) = *chunk;
         i_++;

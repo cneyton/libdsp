@@ -13,6 +13,7 @@ set(files
     fd_block_test.cpp
     fhr_block_test.cpp
     full_pipeline_test.cpp
+    qi_feature_filter_test.cpp
     #arma_test.cpp
     )
 
