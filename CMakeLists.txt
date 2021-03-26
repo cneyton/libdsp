@@ -47,6 +47,7 @@ target_link_libraries(sigpack INTERFACE armadillo fftw3)
 target_include_directories(sigpack INTERFACE dependencies/sigpack)
 
 # mlpack
+find_package(MLPACK REQUIRED)
 
 ################################################################################
 # build
@@ -58,8 +59,8 @@ target_sources(dsp PRIVATE
     src/filter.cpp
     )
 target_include_directories(dsp PUBLIC include)
-target_link_libraries(dsp PUBLIC common sigpack cnpy-static z)
-target_compile_options(dsp PUBLIC -Wall -Wextra)
+target_link_libraries(dsp PUBLIC common sigpack cnpy-static z mlpack gomp)
+target_compile_options(dsp PUBLIC -Wall -Wextra -fopenmp)
 
 if (DSP_PROFILE)
     target_compile_definitions(dsp PRIVATE DSP_PROFILE)
