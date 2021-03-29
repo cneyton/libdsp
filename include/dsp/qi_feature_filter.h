@@ -96,16 +96,6 @@ public:
     }
 
 private:
-    /*
-     * Similar parameters as the roll filter.
-     * If a contiguous matrice is necessary to compute features, it is preferable to
-     * use a roll filter as input of this filter.
-     */
-    //arma::uword skip_;
-    //arma::uword i_ = 0;
-    //std::deque<std::shared_ptr<Chunk<T1>>> chunk_queue_;
-    //arma::uword queue_size_;
-
     // we can use a map here if there is more input
     bool cor_received_ = false;
     bool iq_received_  = false;
