@@ -67,6 +67,13 @@ if (DSP_PROFILE)
 endif()
 
 ################################################################################
+# tools
+################################################################################
+add_executable(qi_training tools/qi_training.cpp)
+target_link_libraries(qi_training PUBLIC dsp boost_serialization boost_math_c99)
+target_compile_options(qi_training PUBLIC -Wall -Wextra -fopenmp)
+
+################################################################################
 # tests
 ################################################################################
 include(CTest)
